@@ -38,4 +38,29 @@ function computePricing({ service, extras = [], discountPercent = 0, taxRate = 0
   };
 }
 
-module.exports = { computePricing, round2 };
+/**
+ * Recompute the money fields of an existing snapshot for a new discount %.
+ * Keeps base/extras/subtotal/taxRate/currency; used when an admin edits the
+ * per-booking discount before the appointment is finalized (2.4).
+ */
+function recomputeTotals(snapshot, discountPercent) {
+  const subtotal = round2(snapshot.subtotal);
+  const taxRate = Number(snapshot.taxRate) || 0;
+  const discountAmount = round2(subtotal * (Number(discountPercent) / 100));
+  const taxAmount = round2((subtotal - discountAmount) * taxRate);
+  const total = round2(subtotal - discountAmount + taxAmount);
+
+  return {
+    base: snapshot.base,
+    extras: snapshot.extras,
+    subtotal,
+    discountPercent: Number(discountPercent) || 0,
+    discountAmount,
+    taxRate,
+    taxAmount,
+    total,
+    currency: snapshot.currency,
+  };
+}
+
+module.exports = { computePricing, recomputeTotals, round2 };

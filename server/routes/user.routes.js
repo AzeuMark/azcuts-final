@@ -1,0 +1,19 @@
+const express = require('express');
+
+const auth = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const upload = require('../middleware/upload');
+const ctrl = require('../controllers/user.controller');
+const { updateProfileRules, changePasswordRules } = require('../validators/user.validator');
+
+const router = express.Router();
+
+// All self-profile routes require authentication (any role).
+router.use(auth);
+
+router.get('/profile', ctrl.getProfile);
+router.put('/profile', updateProfileRules, validate, ctrl.updateProfile);
+router.put('/password', changePasswordRules, validate, ctrl.changePassword);
+router.post('/avatar', upload.single('file'), ctrl.uploadAvatar);
+
+module.exports = router;

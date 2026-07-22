@@ -36,6 +36,25 @@ function dayStamp(tz = DEFAULT_TZ, date = new Date()) {
   return dayjs(date).tz(tz).format('YYYYMMDD');
 }
 
+// UTC {start,end} bounds for a named range in tz, or null for 'all'.
+// Used by admin history + analytics range filters.
+function rangeBounds(range, tz = DEFAULT_TZ) {
+  const now = dayjs().tz(tz);
+  switch (range) {
+    case 'daily':
+      return { start: now.startOf('day').toDate(), end: now.endOf('day').toDate() };
+    case 'weekly':
+      return { start: now.startOf('week').toDate(), end: now.endOf('week').toDate() };
+    case 'monthly':
+      return { start: now.startOf('month').toDate(), end: now.endOf('month').toDate() };
+    case 'yearly':
+      return { start: now.startOf('year').toDate(), end: now.endOf('year').toDate() };
+    case 'all':
+    default:
+      return null;
+  }
+}
+
 module.exports = {
   dayjs,
   DEFAULT_TZ,
@@ -44,4 +63,5 @@ module.exports = {
   zonedDateTime,
   inZone,
   dayStamp,
+  rangeBounds,
 };

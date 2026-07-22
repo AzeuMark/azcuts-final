@@ -280,3 +280,50 @@ server/routes/staff.routes.js
 server/services/rating.service.js
 ```
 **Files changed:** `server/controllers/appointment.controller.js` (rate), `server/validators/appointment.validator.js` (rateRules), `server/routes/appointment.routes.js` (POST /:id/rate).
+
+---
+
+### Phase 6 — Admin management (+ self-profile)  ✅ (2026-07-22)
+
+**Goal:** an admin can run the shop — dashboard, user/staff management, per-booking discounts, and history views. Bundled the self-profile endpoints here too (they had no dedicated phase and the client needs them).
+
+**What was built**
+- **Helpers**
+  - `pricing.recomputeTotals(snapshot, discountPercent)` — recomputes discount/tax/total from an existing snapshot (keeps base/extras/subtotal/taxRate/currency).
+  - `datetime.rangeBounds(range, tz)` — UTC `{start,end}` for daily/weekly/monthly/yearly (null for 'all'); reused by history + upcoming analytics.
+- **`controllers/admin.controller.js`**
+  - `dashboard` — live counters: `activeStaff`, `inService`, `bookingsToday`, `customersToday` (distinct), `salesToday` + `completedToday` (sum of `priceSnapshot.total` for today's done appointments), all in shop tz.
+  - `listUsers` — paginated **20/page**, `?role`, `?search` (escaped regex on name/email).
+  - `createUser` — creates customer/staff/admin; validates a staff `nickname` against `Settings.nicknames`; password hashed by the model.
+  - `updateUser` — edits any field incl. password reset (loads `+password` so the save-hook validates and only re-hashes on change); blocks changing your own role.
+  - `deleteUser` — blocks deleting yourself and the last admin.
+  - `setDiscount` — sets the per-booking `discountPercent` and recomputes the snapshot; **409** if the appointment is already done/cancelled.
+  - `historyStaff` / `historyUsers` — paginated appointment history with `?status` and `?range` filters.
+- **`controllers/user.controller.js`** (self-service) — `getProfile`, `updateProfile` (staff-only nickname validated against settings), `changePassword` (verifies current), `uploadAvatar` (Multer field `file` → `/uploads`).
+- **Validators** — `validators/user.validator.js` (admin create/update, discount, profile, password).
+- **Routes** — `routes/admin.routes.js` (`/api/admin/*`, all `auth`+`requireRole('admin')`) and `routes/user.routes.js` (`/api/users/*`, `auth`); both mounted.
+
+**Definition of Done — verified** (temporary Node test, since removed)
+- Dashboard → **200** with counters; after completing a discounted booking, `salesToday=135`, `completedToday=1`. ✅
+- Create staff → **201**, and the new staff can **log in** (password hashed correctly); passwords never returned. ✅
+- Invalid staff nickname → **400**; duplicate email → **409**; list search/pagination works (20/page). ✅
+- Update user (fields + password reset) → **200**, re-login with the new password works. ✅
+- Discount 10% on a ₱150 booking → subtotal 150 / discount 15 / **total 135**; discount on a done booking → **409**. ✅
+- History (staff + users) → **200** paginated. ✅
+- Self profile get/update/change-password → **200**, re-login with new password works; avatar upload → **200** with `/uploads/...` path. ✅
+- Non-admin hitting `/admin/*` → **403**; admin deleting self → **400**; delete a normal user → **200**. ✅
+- Test users/appointments/uploads cleaned; staff reset to baseline afterward.
+
+**Notes & decisions**
+- **Self-profile endpoints** (`/users/profile`, `/users/password`, `/users/avatar`) were implemented here because they had no dedicated phase and the client will need them; grouped with the other user-facing management work.
+- `updateUser`/`changePassword` load the password field explicitly (`select('+password')`) so Mongoose's required-field validation passes on save while the hash hook still fires only when the password actually changes.
+- Discount edits are allowed while the appointment is **not** finalized (pending/accepted/in_service) and blocked once done/cancelled, per §2.4.
+- Delete is a hard delete with self + last-admin guards; historical appointments keep their data via the frozen `priceSnapshot`.
+
+**Files created**
+```
+server/controllers/admin.controller.js  user.controller.js
+server/validators/user.validator.js
+server/routes/admin.routes.js  user.routes.js
+```
+**Files changed:** `server/services/pricing.service.js` (recomputeTotals), `server/utils/datetime.js` (rangeBounds), `server/routes/index.js` (mount /admin + /users).
