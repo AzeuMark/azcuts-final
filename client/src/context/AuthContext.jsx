@@ -22,9 +22,10 @@ export function AuthProvider({ children }) {
     setStatus('authenticated');
   }, []);
 
+  // identifier may be a username or an email
   const login = useCallback(
-    async (email, password) => {
-      const res = await authApi.login({ email, password });
+    async (identifier, password) => {
+      const res = await authApi.login({ identifier, password });
       applySession(res.data);
       return res.data?.user;
     },

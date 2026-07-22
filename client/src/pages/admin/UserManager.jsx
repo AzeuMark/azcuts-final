@@ -53,6 +53,7 @@ export default function UserManager() {
 
   const columns = [
     { key: 'name', header: 'Name', render: (u) => <span className="font-medium text-ink">{u.fullName}</span> },
+    { key: 'username', header: 'Username', render: (u) => <span className="text-muted">@{u.username}</span> },
     { key: 'email', header: 'Email', render: (u) => <span className="text-muted">{u.email}</span> },
     {
       key: 'role',
@@ -173,6 +174,7 @@ function UserFormModal({ user, nicknames, onClose, onSaved }) {
   } = useForm({
     defaultValues: {
       fullName: user?.fullName || '',
+      username: user?.username || '',
       email: user?.email || '',
       phone: user?.phone || '',
       address: user?.address || '',
@@ -189,6 +191,7 @@ function UserFormModal({ user, nicknames, onClose, onSaved }) {
     mutationFn: (values) => {
       const payload = {
         fullName: values.fullName,
+        username: values.username,
         email: values.email,
         phone: values.phone || undefined,
         address: values.address || undefined,
@@ -232,6 +235,16 @@ function UserFormModal({ user, nicknames, onClose, onSaved }) {
           label="Full name"
           error={errors.fullName?.message}
           {...register('fullName', { required: 'Full name is required' })}
+        />
+        <Input
+          label="Username"
+          error={errors.username?.message}
+          {...register('username', {
+            required: 'Username is required',
+            minLength: { value: 3, message: 'At least 3 characters' },
+            maxLength: { value: 30, message: 'At most 30 characters' },
+            pattern: { value: /^[a-zA-Z0-9._]+$/, message: 'Letters, numbers, dots, underscores only' },
+          })}
         />
         <Input
           label="Email"

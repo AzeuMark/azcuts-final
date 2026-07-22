@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { User, Mail, Phone, Lock } from 'lucide-react';
+import { User, AtSign, Mail, Phone, Lock } from 'lucide-react';
 import AuthShell from '../../components/layout/AuthShell';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
@@ -30,6 +30,7 @@ export default function Register() {
     try {
       const user = await registerUser({
         fullName: values.fullName.trim(),
+        username: values.username.trim().toLowerCase(),
         email: values.email.trim(),
         phone: values.phone?.trim() || undefined,
         password: values.password,
@@ -71,6 +72,23 @@ export default function Register() {
           leftIcon={<User className="h-4 w-4" />}
           error={errors.fullName?.message}
           {...register('fullName', { required: 'Full name is required' })}
+        />
+
+        <Input
+          label="Username"
+          autoComplete="username"
+          placeholder="e.g. juandelacruz"
+          leftIcon={<AtSign className="h-4 w-4" />}
+          error={errors.username?.message}
+          {...register('username', {
+            required: 'Username is required',
+            minLength: { value: 3, message: 'At least 3 characters' },
+            maxLength: { value: 30, message: 'At most 30 characters' },
+            pattern: {
+              value: /^[a-zA-Z0-9._]+$/,
+              message: 'Letters, numbers, dots, and underscores only',
+            },
+          })}
         />
 
         <Input

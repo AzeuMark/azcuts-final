@@ -28,7 +28,7 @@ const updateProfile = asyncHandler(async (req, res) => {
     user.nickname = req.body.nickname;
   }
 
-  ['fullName', 'address', 'phone', 'email'].forEach((f) => {
+  ['fullName', 'username', 'address', 'phone', 'email'].forEach((f) => {
     if (req.body[f] !== undefined) user[f] = req.body[f];
   });
 

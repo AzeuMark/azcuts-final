@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Mail, Lock } from 'lucide-react';
+import { AtSign, Lock } from 'lucide-react';
 import AuthShell from '../../components/layout/AuthShell';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
@@ -31,7 +31,7 @@ export default function Login() {
   const onSubmit = async (values) => {
     setFormError(null);
     try {
-      const user = await login(values.email.trim(), values.password);
+      const user = await login(values.identifier.trim(), values.password);
       const first = user?.fullName?.split(' ')[0];
       toast.success(first ? `Welcome back, ${first}` : 'Welcome back');
       navigate(from || ROLE_HOME[user?.role] || '/', { replace: true });
@@ -65,16 +65,13 @@ export default function Login() {
         )}
 
         <Input
-          label="Email"
-          type="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          leftIcon={<Mail className="h-4 w-4" />}
-          error={errors.email?.message}
-          {...register('email', {
-            required: 'Email is required',
-            pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email' },
-          })}
+          label="Username or email"
+          type="text"
+          autoComplete="username"
+          placeholder="you@example.com or your username"
+          leftIcon={<AtSign className="h-4 w-4" />}
+          error={errors.identifier?.message}
+          {...register('identifier', { required: 'Username or email is required' })}
         />
 
         <Input

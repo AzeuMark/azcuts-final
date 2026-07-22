@@ -72,10 +72,15 @@ const listUsers = asyncHandler(async (req, res) => {
 
 // POST /admin/users — create a customer OR staff (or admin).
 const createUser = asyncHandler(async (req, res) => {
-  const { fullName, email, phone, address, password, role = 'user', nickname } = req.body;
+  const { fullName, username, email, phone, address, password, role = 'user', nickname } = req.body;
 
-  const exists = await User.findOne({ email: String(email).toLowerCase() });
-  if (exists) throw ApiError.conflict('Email is already registered');
+  const emailLc = String(email).toLowerCase();
+  const usernameLc = String(username).toLowerCase();
+  const exists = await User.findOne({ $or: [{ email: emailLc }, { username: usernameLc }] });
+  if (exists) {
+    if (exists.email === emailLc) throw ApiError.conflict('Email is already registered');
+    throw ApiError.conflict('Username is already taken');
+  }
 
   if (role === 'staff' && nickname) {
     const settings = await Settings.findById('system');
@@ -86,7 +91,8 @@ const createUser = asyncHandler(async (req, res) => {
 
   const user = await User.create({
     fullName,
-    email,
+    username: usernameLc,
+    email: emailLc,
     phone,
     address,
     password,
@@ -118,7 +124,7 @@ const updateUser = asyncHandler(async (req, res) => {
     }
   }
 
-  ['fullName', 'email', 'phone', 'address', 'nickname', 'role', 'status', 'isApproved', 'password'].forEach(
+  ['fullName', 'username', 'email', 'phone', 'address', 'nickname', 'role', 'status', 'isApproved', 'password'].forEach(
     (f) => {
       if (req.body[f] !== undefined) user[f] = req.body[f];
     }

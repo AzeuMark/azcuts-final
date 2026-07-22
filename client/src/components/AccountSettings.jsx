@@ -18,6 +18,7 @@ export default function AccountSettings({ showNickname = false }) {
   const profileForm = useForm({
     values: {
       fullName: user?.fullName || '',
+      username: user?.username || '',
       email: user?.email || '',
       phone: user?.phone || '',
       address: user?.address || '',
@@ -31,6 +32,7 @@ export default function AccountSettings({ showNickname = false }) {
     mutationFn: (values) => {
       const payload = {
         fullName: values.fullName,
+        username: values.username,
         email: values.email,
         phone: values.phone || undefined,
         address: values.address || undefined,
@@ -72,6 +74,16 @@ export default function AccountSettings({ showNickname = false }) {
               label="Full name"
               error={profileForm.formState.errors.fullName?.message}
               {...profileForm.register('fullName', { required: 'Full name is required' })}
+            />
+            <Input
+              label="Username"
+              error={profileForm.formState.errors.username?.message}
+              {...profileForm.register('username', {
+                required: 'Username is required',
+                minLength: { value: 3, message: 'At least 3 characters' },
+                maxLength: { value: 30, message: 'At most 30 characters' },
+                pattern: { value: /^[a-zA-Z0-9._]+$/, message: 'Letters, numbers, dots, underscores only' },
+              })}
             />
             <Input
               label="Email"

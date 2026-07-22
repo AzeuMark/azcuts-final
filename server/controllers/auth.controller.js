@@ -34,9 +34,10 @@ const register = asyncHandler(async (req, res) => {
 });
 
 const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { identifier, email, username, password } = req.body;
+  const loginId = identifier || email || username;
   const { user, accessToken, refreshToken, refreshExpiresAt } =
-    await authService.login(email, password);
+    await authService.login(loginId, password);
   setRefreshCookie(res, refreshToken, refreshExpiresAt);
   return ok(res, { user, accessToken }, 'Login successful');
 });

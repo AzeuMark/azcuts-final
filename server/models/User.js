@@ -6,6 +6,16 @@ const userSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true, trim: true },
     nickname: { type: String, trim: true }, // staff title (from Settings.nicknames)
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      sparse: true, // tolerates any legacy docs created before usernames existed
+      lowercase: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 30,
+    },
     email: {
       type: String,
       required: true,

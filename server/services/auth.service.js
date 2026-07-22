@@ -48,13 +48,22 @@ async function issueTokens(user) {
   return { accessToken, refreshToken, refreshExpiresAt };
 }
 
-async function register({ fullName, email, phone, password }) {
-  const existing = await User.findOne({ email: String(email).toLowerCase() });
-  if (existing) throw ApiError.conflict('Email is already registered');
+async function register({ fullName, username, email, phone, password }) {
+  const emailLc = String(email).toLowerCase();
+  const usernameLc = String(username).toLowerCase();
+
+  const existing = await User.findOne({
+    $or: [{ email: emailLc }, { username: usernameLc }],
+  });
+  if (existing) {
+    if (existing.email === emailLc) throw ApiError.conflict('Email is already registered');
+    throw ApiError.conflict('Username is already taken');
+  }
 
   const user = await User.create({
     fullName,
-    email,
+    username: usernameLc,
+    email: emailLc,
     phone,
     password,
     role: 'user', // customers can only ever self-register as `user`
@@ -64,17 +73,17 @@ async function register({ fullName, email, phone, password }) {
   return { user: user.toPublic(), ...tokens };
 }
 
-async function login(email, password) {
-  const user = await User.findOne({ email: String(email).toLowerCase() }).select(
-    '+password'
-  );
-  if (!user) throw ApiError.unauthorized('Invalid email or password');
+// `identifier` may be a username OR an email (both stored lowercased).
+async function login(identifier, password) {
+  const id = String(identifier || '').toLowerCase();
+  const user = await User.findOne({ $or: [{ email: id }, { username: id }] }).select('+password');
+  if (!user) throw ApiError.unauthorized('Invalid username/email or password');
   if (user.status === 'inactive') {
     throw ApiError.forbidden('This account is disabled');
   }
 
   const match = await user.comparePassword(password);
-  if (!match) throw ApiError.unauthorized('Invalid email or password');
+  if (!match) throw ApiError.unauthorized('Invalid username/email or password');
 
   // System-mode gate (2.5): checked AFTER credentials so the right roles can
   // still log in during maintenance/offline.

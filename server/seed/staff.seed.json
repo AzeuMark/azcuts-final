@@ -1,6 +1,7 @@
 [
   {
     "fullName": "Miguel Santos",
+    "username": "miguel",
     "email": "miguel@azcuts.com",
     "phone": "",
     "password": "$2b$10$.xt0jL3.Uxa0Ls3L4KOS3ucNBaSeoW49.ICe9GEk4bve72ahbLeUC",
@@ -10,6 +11,7 @@
   },
   {
     "fullName": "Ramon Cruz",
+    "username": "ramon",
     "email": "ramon@azcuts.com",
     "phone": "",
     "password": "$2b$10$.xt0jL3.Uxa0Ls3L4KOS3ucNBaSeoW49.ICe9GEk4bve72ahbLeUC",
