@@ -327,3 +327,41 @@ server/validators/user.validator.js
 server/routes/admin.routes.js  user.routes.js
 ```
 **Files changed:** `server/services/pricing.service.js` (recomputeTotals), `server/utils/datetime.js` (rangeBounds), `server/routes/index.js` (mount /admin + /users).
+
+---
+
+### Phase 7 — Analytics & Reports  ✅ (2026-07-22)
+
+**Goal:** admin analytics — KPIs, a sales time-series, and JSON/CSV report export, all filterable by range.
+
+**What was built**
+- **`utils/csv.js`** — dependency-free `toCSV(records, columns)` with RFC-4180 escaping (quotes cells containing `, " \n`).
+- **`services/analytics.service.js`** (Mongo aggregation)
+  - `summary(range)` — `bookings` (created), `completed` + `revenue` + `avgTicket` (done, by `finishedAt`), `cancelled`, `newCustomers`, a full `statusBreakdown`, and `topServices` / `topStaff` (via `$lookup`).
+  - `salesSeries(range)` — revenue + count grouped into tz-aware buckets with `$dateToString` (hour for daily, day for weekly/monthly, month for yearly/all).
+  - `report(range)` — detailed per-appointment rows + the KPI summary.
+  - All ranges resolved through `datetime.rangeBounds`; `range=all` applies no date filter.
+- **HTTP layer** — `controllers/analytics.controller.js` (`getSummary`, `getSales`, `getReport`), `validators/analytics.validator.js` (range/format enums), `routes/analytics.routes.js` mounted at `/api/analytics` (all `auth` + `requireRole('admin')`). CSV export streams as `text/csv` with a `Content-Disposition` attachment.
+
+**Definition of Done — verified** (temporary Node test with 2 done / 1 cancelled / 1 pending booking, since removed)
+- `summary(all)` → `bookings=4, completed=2, cancelled=1, revenue=300, avgTicket=150`; `statusBreakdown` done=2/cancelled=1/pending=1; `topServices[0]` = Classic Haircut (count 2, ₱300); `topStaff[0]` = Miguel (count 2). ✅
+- `summary(daily)` → same figures (all created today). ✅
+- `salesSeries(all)` → 1 bucket, total revenue **300**. ✅
+- `report(json)` → 4 rows + summary; `report(csv)` → **200** `text/csv`, header + 4 rows, correct columns. ✅
+- Non-admin → **403**; invalid `range` → **422**. ✅
+- Test data cleaned; staff reset afterward.
+
+**Notes & decisions**
+- Revenue/completion KPIs key off `finishedAt` (when money is realized); booking counts key off `createdAt`; cancellations off `cancelledAt`.
+- Time-series bucketing is timezone-aware via `$dateToString { timezone }` so days align to Asia/Manila, not UTC.
+- CSV is generated without any extra dependency, matching the earlier decision.
+
+**Files created**
+```
+server/utils/csv.js
+server/services/analytics.service.js
+server/controllers/analytics.controller.js
+server/validators/analytics.validator.js
+server/routes/analytics.routes.js
+```
+**Files changed:** `server/routes/index.js` (mount /analytics).
