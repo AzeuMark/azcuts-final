@@ -137,20 +137,21 @@ export default function PublicNavbar({ onAuth }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <ThemeToggle />
-
             {isAuthenticated ? (
               <>
+                {/* Order: Dashboard > Theme > Profile */}
                 <Link
                   to={home}
-                  className="hidden text-sm font-semibold text-ink transition-colors hover:text-brand sm:block"
+                  className="hidden bg-brand px-4 py-2 text-sm font-bold uppercase tracking-wider text-brand-fg transition-colors hover:bg-brand-hover focus-ring sm:block"
                 >
                   Dashboard
                 </Link>
+                <ThemeToggle />
                 <AccountMenu user={user} home={home} onLogout={handleLogout} />
               </>
             ) : (
               <>
+                <ThemeToggle />
                 <button
                   type="button"
                   onClick={() => openAuth('login')}

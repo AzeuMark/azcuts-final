@@ -13,6 +13,8 @@ import { formatMoney } from '../../utils/formatMoney';
 import { formatClock } from '../../utils/datetime';
 import { serverAsset } from '../../utils/serverAsset';
 import cn from '../../utils/cn';
+import lisaImg from './images/lisa.jpg';
+import mrbeastImg from './images/mrbeast.png';
 
 // Where the "Book" CTAs go: guests register first; signed-in users land in their portal.
 const BOOK_BY_ROLE = { user: '/app/book', staff: '/staff', admin: '/admin' };
@@ -29,14 +31,18 @@ const DOT_TEXTURE =
   "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23232733' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")";
 
 const STATS = [
-  { value: '15+', label: 'Years Experience', tone: 'brand' },
-  { value: '8k+', label: 'Cuts Completed', tone: 'accent' },
-  { value: '4.9', label: 'Avg. Rating', tone: 'brand' },
+  { value: '67+', label: 'Years Experience', tone: 'brand' },
+  { value: '6.9k+', label: 'Cuts Completed', tone: 'accent' },
+  { value: '6.7', label: 'Avg. Rating', tone: 'brand' },
 ];
 
 // The people who built AzCuts (credited in a small section, separate from barbers).
 const DEVELOPERS = [
-  { name: 'Uelmark G. Valdehueza', role: 'Head Developer' },
+  {
+    name: 'Uelmark G. Valdehueza',
+    role: 'Head Developer',
+    img: 'https://avatars.githubusercontent.com/u/76932815',
+  },
   { name: 'JM Nikko O. Gallardo', role: 'Assistant Developer' },
   { name: 'Lara Angel A. Habagat', role: 'Assistant Developer' },
 ];
@@ -44,17 +50,17 @@ const DEVELOPERS = [
 const STORIES = [
   {
     quote:
-      'Best haircut I\u2019ve ever had. The atmosphere is intense and professional. Uelmark knew exactly what I wanted.',
-    name: 'Mark S.',
-    detail: 'Skin Fade & Beard Sculpt',
-    img: 'https://images.unsplash.com/photo-1604014438952-72e67f8f7f75?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
+      'Sharpest I\u2019ve looked outside a photoshoot. The team nailed the style and booking was effortless.',
+    name: 'Lalisa Manobal',
+    detail: 'Lisa from BLACKPINK',
+    img: lisaImg,
   },
   {
     quote:
-      'Lara did an amazing job with my hair color. The booking system was effortless. Highly recommend AzCuts!',
-    name: 'Elena R.',
-    detail: 'Color & Treatment',
-    img: 'https://images.unsplash.com/photo-1542662565-7e4b9f8c5c7f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80',
+      'Fastest, cleanest cut ever — in and out, looking fresh. AzCuts is the real deal.',
+    name: 'Jimmy Donaldson',
+    detail: 'MrBeast',
+    img: mrbeastImg,
   },
 ];
 
@@ -120,7 +126,7 @@ export default function Landing() {
   ];
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-app text-ink" style={{ backgroundImage: DOT_TEXTURE }}>
+    <div className="min-h-screen overflow-x-clip bg-app text-ink" style={{ backgroundImage: DOT_TEXTURE }}>
       <PublicNavbar onAuth={setAuthMode} />
       <LandingAuthPanel
         mode={authMode}
@@ -208,7 +214,7 @@ export default function Landing() {
                 </h2>
               </Reveal>
               <Reveal direction="right" className="flex flex-col gap-4 md:items-end">
-                <p className="max-w-md text-sm leading-relaxed text-muted">
+                <p className="max-w-md text-sm leading-relaxed text-ink/70">
                   Whether you need a sharp fade, a salon treatment, or a complete transformation, we
                   have the expertise. Pick one when you book.
                 </p>
@@ -358,7 +364,7 @@ export default function Landing() {
                   Client Stories
                 </h2>
               </Reveal>
-              <Reveal direction="right" as="p" className="max-w-md text-sm leading-relaxed text-muted">
+              <Reveal direction="right" as="p" className="max-w-md text-sm leading-relaxed text-ink/70">
                 Transformations that speak for themselves. Join the community of satisfied clients.
               </Reveal>
             </div>
@@ -410,9 +416,18 @@ export default function Landing() {
                   delay={i * 100}
                   className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-semibold text-accent">
-                    {initialsOf(dev.name)}
-                  </span>
+                  {dev.img ? (
+                    <img
+                      src={dev.img}
+                      alt={dev.name}
+                      loading="lazy"
+                      className="h-9 w-9 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-semibold text-accent">
+                      {initialsOf(dev.name)}
+                    </span>
+                  )}
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-ink">{dev.name}</p>
                     <p className="text-xs text-muted">{dev.role}</p>

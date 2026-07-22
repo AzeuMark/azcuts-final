@@ -1,10 +1,15 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import cn from '../../utils/cn';
 import { NAV_BY_ROLE, ROLE_LABEL } from './navConfig';
 
 function BrandMark({ role, collapsed }) {
   return (
-    <div className={cn('flex items-center gap-3', collapsed && 'justify-center')}>
+    <Link
+      to="/"
+      title="Go to landing page"
+      aria-label="AzCuts — go to landing page"
+      className={cn('focus-ring flex items-center gap-3 rounded-lg', collapsed && 'justify-center')}
+    >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-2">
         <img
           src="/assets/website-logo.png"
@@ -20,7 +25,7 @@ function BrandMark({ role, collapsed }) {
           </div>
         </div>
       )}
-    </div>
+    </Link>
   );
 }
 

@@ -10,8 +10,6 @@ import Spinner from './components/ui/Spinner';
 // Code-split every page so heavy deps (e.g. recharts on Analytics, html2canvas on
 // the receipt) load only when their route is visited.
 const Landing = lazy(() => import('./pages/public/Landing'));
-const Login = lazy(() => import('./pages/public/Login'));
-const Register = lazy(() => import('./pages/public/Register'));
 const Maintenance = lazy(() => import('./pages/public/Maintenance'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -46,10 +44,10 @@ export default function App() {
       <ThemeSync />
       <Suspense fallback={<PageFallback />}>
         <Routes>
-          {/* Public */}
+          {/* Public — login/register happen in the landing slide-in panel */}
           <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/register" element={<Navigate to="/" replace />} />
           <Route path="/maintenance" element={<Maintenance />} />
 
           {/* Customer portal */}

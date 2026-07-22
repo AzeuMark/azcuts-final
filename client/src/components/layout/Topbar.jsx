@@ -147,7 +147,7 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed 
   const handleLogout = async () => {
     setMenuOpen(false);
     await logout();
-    navigate('/login');
+    navigate('/');
   };
 
   return (

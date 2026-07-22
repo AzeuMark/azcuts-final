@@ -1,13 +1,12 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_HOME } from '../utils/constants';
 import Spinner from './ui/Spinner';
 
-// Auth + role gate (CLIENT_PLAN §2.1). Unauthenticated → /login (remembering where
-// they were headed); wrong role → that role's own home.
+// Auth + role gate (CLIENT_PLAN §2.1). Unauthenticated → landing (auth happens in
+// the landing slide-in panel); wrong role → that role's own home.
 export default function ProtectedRoute({ role, children }) {
   const { isAuthenticated, isLoading, role: userRole } = useAuth();
-  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -18,7 +17,7 @@ export default function ProtectedRoute({ role, children }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return <Navigate to="/" replace />;
   }
 
   if (role) {

@@ -17,7 +17,14 @@ const app = express();
 if (env.isProd) app.set('trust proxy', 1);
 
 // --- Global middleware ---
-app.use(helmet());
+// Allow the SPA (served from a different origin) to embed API-served images
+// (service photos, avatars) via <img>. Without this, Helmet's default
+// Cross-Origin-Resource-Policy: same-origin blocks them (ERR_BLOCKED_BY_RESPONSE.NotSameOrigin).
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 app.use(
   cors({
     origin: env.CLIENT_ORIGIN, // restrict to the React client
