@@ -1,15 +1,26 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Suspense, useState } from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
 import { X } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import Spinner from '../ui/Spinner';
 import { useAuth } from '../../hooks/useAuth';
+import { useSettingsPublic } from '../../hooks/useSettingsPublic';
 
 // Shared shell for all three portals: fixed sidebar (lg+) or slide-in drawer
 // (mobile) + sticky topbar + routed content.
 export default function DashboardShell() {
   const { role } = useAuth();
+  const { data: settings } = useSettingsPublic();
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // System-mode gate (SERVER_PLAN §2.5): maintenance blocks customers; offline
+  // blocks customers + staff. Admins always pass. The API enforces this too.
+  const mode = settings?.systemMode;
+  const blocked =
+    (mode === 'maintenance' && role === 'user') ||
+    (mode === 'offline' && (role === 'user' || role === 'staff'));
+  if (blocked) return <Navigate to="/maintenance" replace />;
 
   return (
     <div className="min-h-screen bg-app">
@@ -43,7 +54,15 @@ export default function DashboardShell() {
       <div className="lg:pl-64">
         <Topbar onMenuClick={() => setDrawerOpen(true)} />
         <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <Outlet />
+          <Suspense
+            fallback={
+              <div className="flex justify-center py-20">
+                <Spinner size="lg" className="text-brand" />
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

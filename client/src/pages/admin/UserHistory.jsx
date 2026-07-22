@@ -1,13 +1,11 @@
-import { CalendarDays } from 'lucide-react';
-import PagePlaceholder from '../../components/PagePlaceholder';
+import AdminAppointmentHistory from '../../components/AdminAppointmentHistory';
 
 export default function UserHistory() {
   return (
-    <PagePlaceholder
-      icon={CalendarDays}
+    <AdminAppointmentHistory
+      variant="users"
       title="User History"
-      description="Every customer's appointment history."
-      note="User history is built in Phase 7."
+      description="Every customer appointment. Set per-booking discounts before they finalize."
     />
   );
 }

@@ -3,6 +3,8 @@ import api from '../config/axios';
 const unwrap = (p) => p.then((r) => r.data);
 
 export const appointmentApi = {
+  // Active staff roster for the StaffPicker (choose a specific barber or Auto).
+  bookableStaff: () => unwrap(api.get('/appointments/staff')),
   // Available slots — availability already accounts for selected extras (SERVER_PLAN §2.2).
   slots: ({ serviceId, date, extras = [], staffId } = {}) =>
     unwrap(api.get('/appointments/slots', { params: { serviceId, date, extras, staffId } })),

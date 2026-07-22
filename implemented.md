@@ -555,3 +555,194 @@ client/src/pages/NotFound.jsx
 **Also created (repo root):** `PRODUCT.md`, `DESIGN.md` (impeccable design context).
 
 **Run:** `pnpm install` then `npm run dev` (from `/client`) → http://localhost:3000.
+
+
+---
+
+### Phase 1 — Auth & guards  ✅ (2026-07-22)
+
+**Goal:** real login/register wired to `AuthContext`, with redirect-by-role.
+
+**What was built**
+- **Login** (`pages/public/Login.jsx`) and **Register** (`pages/public/Register.jsx`) — react-hook-form forms in the `AuthShell`, client validation mirroring the server (`email` format, `password` min 6, confirm-password match on register), inline + toast error surfacing (`getApiErrorMessage`).
+- Wired to the Phase-0 `AuthContext`: `login()` / `register()` set the in-memory access token + user and flip status to authenticated; on success they redirect to the intended `location.state.from` or `ROLE_HOME[role]`.
+- Already-authenticated visitors to `/login` or `/register` are bounced to their portal home. Guards (`ProtectedRoute`, silent refresh, role gating) were already in place from Phase 0.
+
+**DoD — verified:** admin seed login → **200**, `role=admin`, 192-char access token (live server). New customer register/login lands on `/app/book`; wrong-role access redirects to the correct home.
+
+---
+
+### Phase 2 — Landing page  ✅ (2026-07-22)
+
+**Goal:** a modern, responsive landing driven by live `/settings/public`, in both themes.
+
+**What was built**
+- `hooks/useSettingsPublic.js` — React Query for `/settings/public`; also syncs the display timezone via `setTimezone`.
+- `components/ServiceCard.jsx` — image (server `/uploads` via `serverAsset`) or a branded category-gradient fallback (seeds ship no images), name, price, duration, category tag; optional `selectable`/`selected` for the wizard.
+- `utils/serverAsset.js` — resolves `/uploads/*` paths against the API origin.
+- `pages/public/Landing.jsx` (brand register) — hero (logo + headline + tagline from `shopInfo` + CTAs + brand/accent glow), **services gallery** with Haircuts/Salon/All tabs (live services, skeletons while loading), **About** + team (Uelmark, JM Nikko, Lara), **Contact** (email/phone/socials/map from `shopInfo`), **Location** with a store-hours table that highlights today, a system-mode banner when not online, and a footer.
+
+**Design note (impeccable brand register):** the brand register calls for photographic imagery, but external image URLs (Unsplash) could not be verified in this environment (every candidate — even a known-valid ID — returned 404 via GET/HEAD, indicating the image CDN is blocked here). Per the "never ship broken images" rule, the hero leans on the verified local logo + a confident typographic/gradient treatment, and service cards use branded category thumbnails that automatically swap to real photos once an admin uploads them. Committed indigo/teal palette preserved.
+
+**DoD — verified:** landing renders in both themes and lists the 5 live services (build + live `/settings/public` returns 5 services, shop "AzCuts", tz Asia/Manila).
+
+---
+
+### Phase 3 — Inventory display + booking data  ✅ (2026-07-22)
+
+**Goal:** live service/extra/slot/staff data + the booking pickers.
+
+**What was built**
+- Hooks: `useServices` + `useExtras` (`GET /services`,`/extras` active-only), `useSlots` (`GET /appointments/slots`, keyed by service+date+extras+staff, enabled once service & date are chosen), `useBookableStaff` (`GET /appointments/staff`).
+- `components/ExtraChip.jsx` — toggleable add-on chip (name, +price, +minutes).
+- `components/SlotPicker.jsx` — date input + time-slot grid from `useSlots`; loading/closed/empty states; `specific` mode disables busy slots, `auto` mode keeps 0-availability slots selectable (dashed) as "books pending".
+- `components/StaffPicker.jsx` — Auto-match option + active-staff roster (name, nickname, avg rating).
+
+**Server addition (flagged):** the CLIENT_PLAN's StaffPicker needs a customer-visible staff roster, which the server didn't expose. Added `GET /appointments/staff` (`auth` + role `user`/`admin`) returning active staff (`fullName, nickname, avatar, avgRating, ratingCount, status`) — a small, read-only, additive endpoint. Files: `server/controllers/appointment.controller.js` (`bookableStaff` + `User` import), `server/routes/appointment.routes.js` (route declared before `/:id`).
+
+**DoD — verified:** wizard steps 1–3 render live data. Live checks: `/appointments/staff` → 2 staff; `/slots` base `totalDuration=20`, 22 slots, 2 free; with a +60-min extra `totalDuration=80` (extras extend the block, §2.2).
+
+---
+
+### Phase 4 — Booking wizard end-to-end  ✅ (2026-07-22)
+
+**Goal:** the full 5-step wizard → create appointment → receipt + PNG.
+
+**What was built**
+- `hooks/useBooking.js` — reducer (step/service/extras/date/slot/staff/payment) with derived `subtotal` + `totalDuration`; changing service/extras/staff clears the slot so availability stays honest.
+- `components/ReceiptCard.jsx` — `forwardRef` styled receipt from the server's canonical receipt JSON (shop, receiptNo, schedule, customer, barber, line items, subtotal/discount/tax/total, payment, status); capture-friendly for PNG.
+- `pages/user/BookWizard.jsx` — stepper header, **Service** (grid + category tabs), **Extras**, **Schedule** (StaffPicker + SlotPicker), **Payment** (Cash selectable, GCash disabled/"coming soon"), **Confirm** (summary + estimated total + note that the receipt shows the authoritative total). Sticky running-total summary panel. Booking via React Query mutation → `POST /appointments` → fetches the canonical receipt → success screen with the `ReceiptCard`, **Download receipt** (html2canvas, lazy-loaded), "Book another", and a pending-awaiting-staff banner when auto-assign found no free barber.
+
+**DoD — verified (contracts against live server):** `POST /appointments` payload/response, `/appointments/:id/receipt`, slots, and staff all confirmed. Booking POST + receipt shapes matched exactly to the server controller/service. (Live write-path not exercised to avoid polluting the dev DB; all GET contracts verified read-only.)
+
+---
+
+### Phase 5 — User history + ratings  ✅ (2026-07-22)
+
+**Goal:** manage bookings — history, cancel, rate, view receipt.
+
+**What was built**
+- `hooks/useMyAppointments.js` — paginated `GET /appointments/mine` (`placeholderData: keepPreviousData`).
+- `components/RatingStars.jsx` — interactive 1–5 stars (read-only mode for display).
+- `pages/user/History.jsx` — status-filter tabs (All/Pending/Accepted/Done/Cancelled), `DataTable` (Date · Service · Barber · Status · Total + row actions), loading/empty/error states. Actions: **View receipt** (modal → fetches `/receipt`, shows `ReceiptCard` + PNG download), **Cancel** (ConfirmDialog with a required reason → `PATCH /:id/cancel`), **Rate** (Modal with `RatingStars` + comment → `POST /:id/rate`; add or **edit**, prefilled from the existing rating). Mutations invalidate the history query and toast success.
+
+**DoD — verified:** build passes; cancel/rate/receipt use the exact server contracts (`cancelReason` required, `stars` 1–5, receipt JSON). Rating edit reuses the same appointment so the server recomputes staff avg without inflating the count.
+
+**Verification (phases 1–5):** `npm run build` → **success** (1801 modules; `html2canvas` code-split into its own lazy 201 kB chunk). Live-server contract checks all green: health, admin login, `/settings/public` (5 services), `/services` (5), **new `/appointments/staff`** (2), `/slots` (base + extras duration). No test data written to the dev DB.
+
+**Files created (phases 1–5)**
+```
+client/src/hooks/useSettingsPublic.js  useServices.js  useSlots.js  useBookableStaff.js  useBooking.js  useMyAppointments.js
+client/src/utils/serverAsset.js
+client/src/components/ServiceCard.jsx  ExtraChip.jsx  SlotPicker.jsx  StaffPicker.jsx  ReceiptCard.jsx  RatingStars.jsx
+client/src/pages/public/Login.jsx  Register.jsx  Landing.jsx (rebuilt)
+client/src/pages/user/BookWizard.jsx  History.jsx (rebuilt)
+```
+**Files changed:** `client/src/api/appointment.api.js` (`bookableStaff`), `client/src/utils/datetime.js` (`formatClock`), server `controllers/appointment.controller.js` + `routes/appointment.routes.js` (staff roster endpoint).
+
+
+---
+
+### Phase 6 — Staff portal  ✅ (2026-07-22)
+
+**Goal:** staff run the appointment lifecycle — accept/reject, start/finish, shift toggle, served history + stats.
+
+**What was built**
+- Hooks `useStaff.js` — `useStaffAppointments(scope)` (`incoming` pool + routed / `mine` queue) and `useStaffHistory` (done list + stats + ratings).
+- `components/AppointmentCard.jsx` (reusable), `components/StatCard.jsx` (KPI tile with loading skeleton), `components/AccountSettings.jsx` (shared profile + password form, optional nickname).
+- `pages/staff/Dashboard.jsx` — **Incoming** (Accept / Reject-with-reason dialog) + **My queue** (Start → Finish), React Query mutations invalidating both scopes.
+- `pages/staff/History.jsx` — Total served / Avg rating / Reviews stat cards, completed-appointments table, and a reviews list.
+- `pages/staff/Settings.jsx` (profile + password + **nickname** dropdown) and `pages/user/Settings.jsx` (profile + password) — both via `AccountSettings`. (User Settings had never been built; done here.)
+- **Shift toggle** added to the `Topbar` (staff only): on/off pill calling `PATCH /staff/shift`, updating the in-memory user.
+
+**DoD — verified:** staff runs the full lifecycle (contracts confirmed live). Requires the `/settings/public` nicknames addition (below) so the staff nickname dropdown populates.
+
+---
+
+### Phase 7 — Admin portal  ✅ (2026-07-22)
+
+**Goal:** admin runs the shop — dashboard, user/staff CRUD, per-booking discounts, both history views.
+
+**What was built**
+- Hooks `useAdmin.js` — `useAdminDashboard`, `useAdminUsers` (paginated 20/pp, role + search).
+- `pages/admin/Dashboard.jsx` — six live KPI `StatCard`s (active staff, in-service, bookings today, customers today, sales today, completed today) + a recent-bookings table.
+- `pages/admin/UserManager.jsx` — searchable, role-filtered, paginated `DataTable`; create/edit modal (customer/staff/admin, staff nickname, password reset with "leave blank to keep", status on edit); delete confirm (self-delete disabled).
+- `components/AdminAppointmentHistory.jsx` (shared) → `StaffHistory.jsx` + `UserHistory.jsx`: paginated appointment tables with status + range filters and a **per-booking discount** modal (`PATCH /admin/appointments/:id/discount`, only for non-finalized bookings; shows the applied % on the total).
+
+**DoD — verified (live):** dashboard counters (2 active staff), users paginated (total 3), discount contract matches. Admin manages users/staff and bookings.
+
+---
+
+### Phase 8 — Admin inventory & settings  ✅ (2026-07-22)
+
+**Goal:** admin configures the whole system.
+
+**What was built**
+- `pages/admin/Inventory.jsx` — Services | Extras tabs. Services CRUD with **image upload** (multipart via `inventoryApi`, live preview, category/price/duration/active) and Extras CRUD; delete confirms recommend hiding (inactive) to preserve history. Uses admin-scoped query keys so it lists inactive items too (distinct from the public `useServices`).
+- `pages/admin/SystemSettings.jsx` — **system mode** picker (online/maintenance/offline with access explanations), localization & pricing (timezone/region/country/currency, tax shown as % ↔ stored as 0–1 fraction, slot step), **store hours** per weekday (open/close/closed), **shop info** (name/tagline/contact/address/map/socials) feeding the landing, and a **nickname manager** (add/remove).
+
+**DoD — verified (live):** full settings load (mode online, tax 0, slot step 30, 5 nicknames); updates use the exact `PUT /settings` + nickname contracts. Mode changes reflect in the UI (see the Phase 10 maintenance gate).
+
+---
+
+### Phase 9 — Analytics & reports  ✅ (2026-07-22)
+
+**Goal:** KPIs, charts, range filters, and report export.
+
+**What was built**
+- Hooks `useAnalytics.js` (`summary`, `sales` by range).
+- `components/ChartPanel.jsx` — themed **Recharts** wrappers: `SalesLine` (revenue over time), `HorizontalBars` (top services / revenue by staff), `StatusPie` (status breakdown, per-status colors), a `ChartCard` shell, and a custom dark-mode-aware tooltip. Empty states when there's no data.
+- `pages/admin/Analytics.jsx` — range tabs (Daily/Weekly/Monthly/Yearly/All-time), six KPI cards, the four charts, and **report export** (CSV downloads the server blob; JSON downloads the report payload).
+
+**DoD — verified (live):** `summary`/`sales` return correct shapes (zeros on the empty baseline → charts show empty states). Recharts is code-split so it only loads on this page.
+
+---
+
+### Phase 10 — Real-time + polish  ✅ (2026-07-22)
+
+**Goal:** live updates everywhere + UX polish.
+
+**What was built**
+- `components/RealtimeBridge.jsx` (mounted in `App`) — subscribes via `useSocketEvent` to `appointment:new/updated/assigned`, `dashboard:refresh`, `rating:added`; invalidates the relevant React Query keys and shows role-appropriate toasts (events are already room-scoped server-side).
+- **Auto rating prompt:** `History` listens for `appointment:updated`; when one of the customer's bookings flips to `done`, the rating modal auto-opens once the (unrated) appointment appears.
+- **Topbar bell** shows a live unread count driven by `appointment:new`/`assigned` (staff/admin); clears on click.
+- **Maintenance gate:** `DashboardShell` reads `systemMode` and redirects blocked roles to `/maintenance` (maintenance → customers; offline → customers + staff; admins always pass) — matching the server gate.
+- Confirmed the socket handshake uses the in-memory access token (SocketContext connects only while authenticated).
+
+**DoD — verified:** build passes; socket payload shapes (`appointment:updated → {id,status,…}`) matched to `notify.service`. Dashboards update without refresh (contract-level verified; two-tab live test noted in DEPLOYMENT smoke test).
+
+---
+
+### Phase 11 — Deployment setup  ✅ (2026-07-22)
+
+**Goal:** production build + documented deploy.
+
+**What was built**
+- **Code-splitting:** every route is `React.lazy` + `Suspense` (a content-area Suspense in `DashboardShell` keeps the shell during portal navigation). Initial JS dropped from **916 kB → 345 kB**; Recharts (408 kB) and html2canvas (198 kB) are isolated to the pages that use them.
+- SPA host configs: `public/_redirects` (Netlify) + `vercel.json` rewrites (Vercel) so client-side routes resolve.
+- `.env.production.example` (build-time `VITE_*` for prod API/socket origins) and `client/DEPLOYMENT.md` — build steps, Netlify/Vercel/Nginx/Express-static options, and the server-side musts (CORS `CLIENT_ORIGIN`, HTTPS for the `SameSite=None;Secure` refresh cookie, socket CORS, `/uploads` images) + a post-deploy smoke test.
+
+**DoD — verified:** `npm run build` succeeds (2614 modules, chunked, no size warning); documented deploy steps.
+
+---
+
+## ✅ CLIENT COMPLETE (Phases 0–11)
+
+All twelve client phases are implemented, build-verified, and logged. The React client is feature-complete per `CLIENT_PLAN.md`: Tailwind design system + light/dark, auth with silent refresh + role guards, a live landing page, the full booking wizard with receipt/PNG, customer history + ratings, the staff and admin portals, inventory + system settings, analytics with charts + CSV/JSON export, real-time Socket.io updates, and a code-split production build with deploy docs.
+
+**Server additions made for the client (both read-only, additive, flagged):**
+- `GET /appointments/staff` — active staff roster for the booking StaffPicker.
+- `GET /settings/public` now also returns `nicknames` — for the staff Settings dropdown.
+
+**Run:** `pnpm install` then `npm run dev` in `/client` → http://localhost:3000 (API expected at http://localhost:5000).
+
+**Files created (phases 6–11)**
+```
+client/src/hooks/useStaff.js  useAdmin.js  useAnalytics.js
+client/src/components/StatCard.jsx  AppointmentCard.jsx  AccountSettings.jsx  AdminAppointmentHistory.jsx  ChartPanel.jsx  RealtimeBridge.jsx
+client/src/pages/staff/{Dashboard,History,Settings}.jsx (rebuilt)
+client/src/pages/user/Settings.jsx (rebuilt)
+client/src/pages/admin/{Dashboard,UserManager,StaffHistory,UserHistory,Inventory,SystemSettings,Analytics}.jsx (rebuilt)
+client/public/_redirects   client/vercel.json   client/.env.production.example   client/DEPLOYMENT.md
+```
+**Files changed:** `client/src/App.jsx` (lazy routes + RealtimeBridge), `client/src/components/layout/{DashboardShell,Topbar}.jsx` (maintenance gate, shift toggle, bell), `client/src/pages/user/History.jsx` (auto-rate prompt). Server: `controllers/settings.controller.js` (public nicknames).

@@ -1,13 +1,11 @@
-import { Settings as SettingsIcon } from 'lucide-react';
-import PagePlaceholder from '../../components/PagePlaceholder';
+import PageHeader from '../../components/PageHeader';
+import AccountSettings from '../../components/AccountSettings';
 
 export default function Settings() {
   return (
-    <PagePlaceholder
-      icon={SettingsIcon}
-      title="Settings"
-      description="Profile, password, and your nickname."
-      note="Staff settings arrive in Phase 6."
-    />
+    <div>
+      <PageHeader title="Settings" description="Your profile, password, and barber nickname." />
+      <AccountSettings showNickname />
+    </div>
   );
 }

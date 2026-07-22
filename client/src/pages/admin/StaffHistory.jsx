@@ -1,13 +1,11 @@
-import { CalendarClock } from 'lucide-react';
-import PagePlaceholder from '../../components/PagePlaceholder';
+import AdminAppointmentHistory from '../../components/AdminAppointmentHistory';
 
 export default function StaffHistory() {
   return (
-    <PagePlaceholder
-      icon={CalendarClock}
+    <AdminAppointmentHistory
+      variant="staff"
       title="Staff History"
-      description="Every staff member's appointment history."
-      note="Staff history is built in Phase 7."
+      description="Appointments routed to staff members. Set per-booking discounts before they finalize."
     />
   );
 }

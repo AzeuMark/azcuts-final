@@ -1,0 +1,151 @@
+import { useForm } from 'react-hook-form';
+import { useMutation } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './ui/Card';
+import Input from './ui/Input';
+import Select from './ui/Select';
+import Button from './ui/Button';
+import { useAuth } from '../hooks/useAuth';
+import { useSettingsPublic } from '../hooks/useSettingsPublic';
+import userApi from '../api/user.api';
+import { getApiErrorMessage } from '../config/axios';
+
+export default function AccountSettings({ showNickname = false }) {
+  const { user, setUser } = useAuth();
+  const { data: settings } = useSettingsPublic();
+  const nicknames = settings?.nicknames || [];
+
+  const profileForm = useForm({
+    values: {
+      fullName: user?.fullName || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      address: user?.address || '',
+      nickname: user?.nickname || '',
+    },
+  });
+
+  const passwordForm = useForm();
+
+  const profileMutation = useMutation({
+    mutationFn: (values) => {
+      const payload = {
+        fullName: values.fullName,
+        email: values.email,
+        phone: values.phone || undefined,
+        address: values.address || undefined,
+      };
+      if (showNickname && values.nickname) payload.nickname = values.nickname;
+      return userApi.updateProfile(payload);
+    },
+    onSuccess: (res) => {
+      if (res?.data?.user) setUser(res.data.user);
+      toast.success('Profile updated');
+    },
+    onError: (e) => toast.error(getApiErrorMessage(e, 'Could not update profile')),
+  });
+
+  const passwordMutation = useMutation({
+    mutationFn: (values) =>
+      userApi.changePassword({
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword,
+      }),
+    onSuccess: () => {
+      toast.success('Password changed');
+      passwordForm.reset();
+    },
+    onError: (e) => toast.error(getApiErrorMessage(e, 'Could not change password')),
+  });
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      {/* Profile */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+          <CardDescription>Update your personal details.</CardDescription>
+        </CardHeader>
+        <form onSubmit={profileForm.handleSubmit((v) => profileMutation.mutate(v))} noValidate>
+          <CardContent className="space-y-4">
+            <Input
+              label="Full name"
+              error={profileForm.formState.errors.fullName?.message}
+              {...profileForm.register('fullName', { required: 'Full name is required' })}
+            />
+            <Input
+              label="Email"
+              type="email"
+              error={profileForm.formState.errors.email?.message}
+              {...profileForm.register('email', {
+                required: 'Email is required',
+                pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email' },
+              })}
+            />
+            <Input label="Phone" type="tel" {...profileForm.register('phone')} />
+            <Input label="Address" {...profileForm.register('address')} />
+            {showNickname && (
+              <Select label="Nickname" {...profileForm.register('nickname')}>
+                <option value="">Select a title…</option>
+                {nicknames.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button type="submit" loading={profileMutation.isPending}>
+              Save changes
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
+
+      {/* Security */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Security</CardTitle>
+          <CardDescription>Change your password.</CardDescription>
+        </CardHeader>
+        <form onSubmit={passwordForm.handleSubmit((v) => passwordMutation.mutate(v))} noValidate>
+          <CardContent className="space-y-4">
+            <Input
+              label="Current password"
+              type="password"
+              autoComplete="current-password"
+              error={passwordForm.formState.errors.currentPassword?.message}
+              {...passwordForm.register('currentPassword', { required: 'Current password is required' })}
+            />
+            <Input
+              label="New password"
+              type="password"
+              autoComplete="new-password"
+              error={passwordForm.formState.errors.newPassword?.message}
+              {...passwordForm.register('newPassword', {
+                required: 'New password is required',
+                minLength: { value: 6, message: 'At least 6 characters' },
+              })}
+            />
+            <Input
+              label="Confirm new password"
+              type="password"
+              autoComplete="new-password"
+              error={passwordForm.formState.errors.confirmPassword?.message}
+              {...passwordForm.register('confirmPassword', {
+                required: 'Please confirm your new password',
+                validate: (v) => v === passwordForm.watch('newPassword') || 'Passwords do not match',
+              })}
+            />
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button type="submit" variant="secondary" loading={passwordMutation.isPending}>
+              Change password
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
+    </div>
+  );
+}

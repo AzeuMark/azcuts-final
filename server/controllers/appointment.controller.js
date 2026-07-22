@@ -2,6 +2,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { ok, created } = require('../utils/response');
 const ApiError = require('../utils/ApiError');
 const Appointment = require('../models/Appointment');
+const User = require('../models/User');
 const scheduling = require('../services/scheduling.service');
 const appointmentService = require('../services/appointment.service');
 const receiptService = require('../services/receipt.service');
@@ -27,6 +28,15 @@ function parseExtras(raw) {
   if (Array.isArray(raw)) return raw;
   return String(raw).split(',').map((s) => s.trim()).filter(Boolean);
 }
+
+// Active staff roster for the booking StaffPicker (customers choose a specific
+// barber or Auto). Read-only, no sensitive fields — only what the picker shows.
+const bookableStaff = asyncHandler(async (req, res) => {
+  const staff = await User.find({ role: 'staff', status: { $in: ['active', 'in_service'] } })
+    .select('fullName nickname avatar avgRating ratingCount status')
+    .sort({ fullName: 1 });
+  return ok(res, { staff }, 'OK');
+});
 
 const availableSlots = asyncHandler(async (req, res) => {
   const { serviceId, date, staffId } = req.query;
@@ -125,6 +135,7 @@ const rate = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  bookableStaff,
   availableSlots,
   createBooking,
   listMine,

@@ -20,6 +20,7 @@ const getPublic = asyncHandler(async (req, res) => {
     currency: settings.currency,
     systemMode: settings.systemMode, // lets the client show a maintenance/offline banner
     storeHours: settings.storeHours,
+    nicknames: settings.nicknames, // staff Settings needs the allowed nickname options
     services,
   });
 });

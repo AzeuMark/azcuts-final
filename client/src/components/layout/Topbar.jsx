@@ -1,9 +1,52 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Bell, LogOut, ChevronDown } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Menu, Bell, LogOut, ChevronDown, Power } from 'lucide-react';
 import ThemeToggle from '../ui/ThemeToggle';
 import { useAuth } from '../../hooks/useAuth';
+import { useSocketEvent } from '../../hooks/useSocketEvent';
+import staffApi from '../../api/staff.api';
+import { getApiErrorMessage } from '../../config/axios';
+import cn from '../../utils/cn';
 import { ROLE_LABEL } from './navConfig';
+
+function ShiftToggle() {
+  const { user, setUser } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const onShift = user?.status !== 'inactive';
+
+  const toggle = async () => {
+    setLoading(true);
+    try {
+      const res = await staffApi.setShift(onShift ? 'inactive' : 'active');
+      setUser({ ...user, status: res?.data?.status });
+      toast.success(res?.message || (onShift ? 'You are off shift' : 'You are on shift'));
+    } catch (e) {
+      toast.error(getApiErrorMessage(e, 'Could not update shift'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={loading}
+      aria-pressed={onShift}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-ring disabled:opacity-60',
+        onShift
+          ? 'border-success/30 bg-success/10 text-success'
+          : 'border-line bg-surface-2 text-muted'
+      )}
+      title="Toggle shift"
+    >
+      <Power className="h-3.5 w-3.5" />
+      {onShift ? 'On shift' : 'Off shift'}
+    </button>
+  );
+}
 
 function initialsOf(name = '') {
   return (
@@ -21,7 +64,14 @@ export default function Topbar({ onMenuClick }) {
   const { user, role, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
   const menuRef = useRef(null);
+
+  const bump = useCallback(() => {
+    if (role === 'staff' || role === 'admin') setUnread((n) => Math.min(99, n + 1));
+  }, [role]);
+  useSocketEvent('appointment:new', bump);
+  useSocketEvent('appointment:assigned', bump);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -58,12 +108,20 @@ export default function Topbar({ onMenuClick }) {
 
       <div className="flex-1" />
 
+      {role === 'staff' && <ShiftToggle />}
+
       <button
         type="button"
-        aria-label="Notifications"
-        className="rounded-md p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink focus-ring"
+        aria-label={unread > 0 ? `Notifications (${unread} new)` : 'Notifications'}
+        onClick={() => setUnread(0)}
+        className="relative rounded-md p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink focus-ring"
       >
         <Bell className="h-5 w-5" />
+        {unread > 0 && (
+          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-brand-fg">
+            {unread}
+          </span>
+        )}
       </button>
 
       <ThemeToggle />

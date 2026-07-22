@@ -45,4 +45,10 @@ export function isoDate(value = new Date(), tz = activeTimezone) {
   return inZone(value, tz).format('YYYY-MM-DD');
 }
 
+// "09:00" (24h store-hours string) -> "9:00 AM".
+export function formatClock(hhmm) {
+  if (!hhmm || !/^\d{1,2}:\d{2}$/.test(hhmm)) return hhmm || '';
+  return dayjs(`2000-01-01 ${hhmm}`, 'YYYY-MM-DD HH:mm').format('h:mm A');
+}
+
 export default dayjs;

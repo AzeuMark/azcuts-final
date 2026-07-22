@@ -1,91 +1,109 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import ProtectedRoute from './components/ProtectedRoute';
+import RealtimeBridge from './components/RealtimeBridge';
 import DashboardShell from './components/layout/DashboardShell';
+import Spinner from './components/ui/Spinner';
 
-import Landing from './pages/public/Landing';
-import Login from './pages/public/Login';
-import Register from './pages/public/Register';
-import Maintenance from './pages/public/Maintenance';
-import NotFound from './pages/NotFound';
+// Code-split every page so heavy deps (e.g. recharts on Analytics, html2canvas on
+// the receipt) load only when their route is visited.
+const Landing = lazy(() => import('./pages/public/Landing'));
+const Login = lazy(() => import('./pages/public/Login'));
+const Register = lazy(() => import('./pages/public/Register'));
+const Maintenance = lazy(() => import('./pages/public/Maintenance'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
-import BookWizard from './pages/user/BookWizard';
-import UserHistory from './pages/user/History';
-import UserSettings from './pages/user/Settings';
+const BookWizard = lazy(() => import('./pages/user/BookWizard'));
+const UserHistory = lazy(() => import('./pages/user/History'));
+const UserSettings = lazy(() => import('./pages/user/Settings'));
 
-import StaffDashboard from './pages/staff/Dashboard';
-import StaffHistory from './pages/staff/History';
-import StaffSettings from './pages/staff/Settings';
+const StaffDashboard = lazy(() => import('./pages/staff/Dashboard'));
+const StaffHistory = lazy(() => import('./pages/staff/History'));
+const StaffSettings = lazy(() => import('./pages/staff/Settings'));
 
-import AdminDashboard from './pages/admin/Dashboard';
-import AdminAnalytics from './pages/admin/Analytics';
-import AdminUserManager from './pages/admin/UserManager';
-import AdminInventory from './pages/admin/Inventory';
-import AdminStaffHistory from './pages/admin/StaffHistory';
-import AdminUserHistory from './pages/admin/UserHistory';
-import AdminSystemSettings from './pages/admin/SystemSettings';
+const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
+const AdminAnalytics = lazy(() => import('./pages/admin/Analytics'));
+const AdminUserManager = lazy(() => import('./pages/admin/UserManager'));
+const AdminInventory = lazy(() => import('./pages/admin/Inventory'));
+const AdminStaffHistory = lazy(() => import('./pages/admin/StaffHistory'));
+const AdminUserHistory = lazy(() => import('./pages/admin/UserHistory'));
+const AdminSystemSettings = lazy(() => import('./pages/admin/SystemSettings'));
+
+function PageFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-app">
+      <Spinner size="lg" className="text-brand" />
+    </div>
+  );
+}
 
 // Route map — CLIENT_PLAN §2.1. Each portal is role-gated and shares DashboardShell.
 export default function App() {
   return (
-    <Routes>
-      {/* Public */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/maintenance" element={<Maintenance />} />
+    <>
+      <RealtimeBridge />
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
+          {/* Public */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/maintenance" element={<Maintenance />} />
 
-      {/* Customer portal */}
-      <Route
-        path="/app"
-        element={
-          <ProtectedRoute role="user">
-            <DashboardShell />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/app/book" replace />} />
-        <Route path="book" element={<BookWizard />} />
-        <Route path="history" element={<UserHistory />} />
-        <Route path="settings" element={<UserSettings />} />
-      </Route>
+          {/* Customer portal */}
+          <Route
+            path="/app"
+            element={
+              <ProtectedRoute role="user">
+                <DashboardShell />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/app/book" replace />} />
+            <Route path="book" element={<BookWizard />} />
+            <Route path="history" element={<UserHistory />} />
+            <Route path="settings" element={<UserSettings />} />
+          </Route>
 
-      {/* Staff portal */}
-      <Route
-        path="/staff"
-        element={
-          <ProtectedRoute role="staff">
-            <DashboardShell />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/staff/dashboard" replace />} />
-        <Route path="dashboard" element={<StaffDashboard />} />
-        <Route path="history" element={<StaffHistory />} />
-        <Route path="settings" element={<StaffSettings />} />
-      </Route>
+          {/* Staff portal */}
+          <Route
+            path="/staff"
+            element={
+              <ProtectedRoute role="staff">
+                <DashboardShell />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/staff/dashboard" replace />} />
+            <Route path="dashboard" element={<StaffDashboard />} />
+            <Route path="history" element={<StaffHistory />} />
+            <Route path="settings" element={<StaffSettings />} />
+          </Route>
 
-      {/* Admin portal */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute role="admin">
-            <DashboardShell />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/admin/dashboard" replace />} />
-        <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="analytics" element={<AdminAnalytics />} />
-        <Route path="users" element={<AdminUserManager />} />
-        <Route path="inventory" element={<AdminInventory />} />
-        <Route path="history/staff" element={<AdminStaffHistory />} />
-        <Route path="history/users" element={<AdminUserHistory />} />
-        <Route path="settings" element={<AdminSystemSettings />} />
-      </Route>
+          {/* Admin portal */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute role="admin">
+                <DashboardShell />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
+            <Route path="users" element={<AdminUserManager />} />
+            <Route path="inventory" element={<AdminInventory />} />
+            <Route path="history/staff" element={<AdminStaffHistory />} />
+            <Route path="history/users" element={<AdminUserHistory />} />
+            <Route path="settings" element={<AdminSystemSettings />} />
+          </Route>
 
-      {/* Fallback */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+          {/* Fallback */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </>
   );
 }
