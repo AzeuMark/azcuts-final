@@ -16,9 +16,9 @@ const HIDDEN = {
 };
 
 /*
- * Scroll-reveal wrapper. Fades/slides its children into place when they enter
- * the viewport. direction: 'up' | 'down' | 'left' | 'right' | 'fade'.
- * Use `delay` (ms) to stagger items in a grid.
+ * Scroll-reveal wrapper. Fades/slides its children into place as they enter the
+ * viewport and back out as they leave (scroll up). direction: 'up' | 'down' |
+ * 'left' | 'right' | 'fade'. Use `delay` (ms) to stagger items in a grid.
  */
 export default function Reveal({
   as: Tag = 'div',
@@ -28,7 +28,8 @@ export default function Reveal({
   children,
   ...props
 }) {
-  const [ref, inView] = useInView();
+  // once: false → re-hides when scrolled out of view, so it animates both ways.
+  const [ref, inView] = useInView({ once: false });
   const hidden = HIDDEN[direction] || HIDDEN.up;
 
   return (
@@ -36,7 +37,7 @@ export default function Reveal({
       ref={ref}
       style={delay ? { transitionDelay: `${delay}ms` } : undefined}
       className={cn(
-        'transition-all duration-700 ease-out will-change-transform motion-reduce:transform-none motion-reduce:transition-none',
+        'transition-all duration-[900ms] ease-out will-change-transform motion-reduce:transform-none motion-reduce:transition-none',
         PREFERS_REDUCED ? '' : inView ? 'translate-x-0 translate-y-0 opacity-100' : hidden,
         className
       )}

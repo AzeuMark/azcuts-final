@@ -4,6 +4,26 @@ import { setAccessToken, onAuthFailure } from '../config/axios';
 
 const AuthContext = createContext(null);
 
+// Local hint that a session likely exists (the real refresh token is an httpOnly
+// cookie we can't read). Lets guests skip the silent /auth/refresh call — which
+// would otherwise log a harmless 401 in the console on every landing visit.
+const SESSION_HINT = 'az-has-session';
+const readSessionHint = () => {
+  try {
+    return localStorage.getItem(SESSION_HINT) === '1';
+  } catch {
+    return false;
+  }
+};
+const setSessionHint = (on) => {
+  try {
+    if (on) localStorage.setItem(SESSION_HINT, '1');
+    else localStorage.removeItem(SESSION_HINT);
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [status, setStatus] = useState('loading'); // 'loading' | 'authenticated' | 'guest'
@@ -13,6 +33,7 @@ export function AuthProvider({ children }) {
     setAccessToken(null);
     setUser(null);
     setStatus('guest');
+    setSessionHint(false);
   }, []);
 
   // data = { user, accessToken } from login/register
@@ -20,6 +41,7 @@ export function AuthProvider({ children }) {
     if (data?.accessToken) setAccessToken(data.accessToken);
     if (data?.user) setUser(data.user);
     setStatus('authenticated');
+    setSessionHint(true);
   }, []);
 
   // identifier may be a username or an email
@@ -58,9 +80,15 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Silent refresh on app load: httpOnly cookie → access token → profile.
+  // Skipped entirely for visitors with no prior session, so a fresh guest never
+  // fires /auth/refresh (avoids the 401 noise in the console).
   useEffect(() => {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
+    if (!readSessionHint()) {
+      setStatus('guest');
+      return;
+    }
     (async () => {
       try {
         const res = await authApi.refresh(); // { data: { accessToken } }

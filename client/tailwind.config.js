@@ -110,7 +110,7 @@ export default {
         'scale-in': 'scale-in 160ms cubic-bezier(0.22, 1, 0.36, 1)',
         'slide-in-right': 'slide-in-right 220ms cubic-bezier(0.22, 1, 0.36, 1)',
         'slide-in-left': 'slide-in-left 220ms cubic-bezier(0.22, 1, 0.36, 1)',
-        'fade-in-up': 'fade-in-up 500ms cubic-bezier(0.16, 1, 0.3, 1) both',
+        'fade-in-up': 'fade-in-up 650ms cubic-bezier(0.16, 1, 0.3, 1) both',
         barber: 'barber 2.4s linear infinite',
         marquee: 'marquee 5s linear infinite alternate',
       },

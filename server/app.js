@@ -17,12 +17,22 @@ const app = express();
 if (env.isProd) app.set('trust proxy', 1);
 
 // --- Global middleware ---
-// Allow the SPA (served from a different origin) to embed API-served images
-// (service photos, avatars) via <img>. Without this, Helmet's default
-// Cross-Origin-Resource-Policy: same-origin blocks them (ERR_BLOCKED_BY_RESPONSE.NotSameOrigin).
+// - crossOriginResourcePolicy: 'cross-origin' lets a different-origin SPA embed
+//   API-served images/avatars via <img> (avoids ERR_BLOCKED_BY_RESPONSE.NotSameOrigin).
+// - contentSecurityPolicy: broadened from Helmet's defaults for what the app
+//   actually loads — external images (Unsplash/GitHub avatars), Google Fonts,
+//   and same-origin WebSockets (Socket.io). The no-flash theme script is an
+//   external file so `script-src 'self'` stays strict (no 'unsafe-inline').
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+        'connect-src': ["'self'", 'ws:', 'wss:', 'https:'],
+      },
+    },
   })
 );
 app.use(
