@@ -24,8 +24,8 @@ const BOOK_BY_ROLE = { user: '/app/book', staff: '/staff', admin: '/admin' };
 
 // Editorial hero photography (grayscale-treated in the UI).
 const HERO_IMG =
-  'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80';
-
+  // 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80';
+      landingBackgroundImg
 // Category icon used as the service fallback when no image is uploaded.
 const CATEGORY_ICON = { haircut: Scissors, salon: Sparkles };
 
@@ -44,7 +44,7 @@ const DEVELOPERS = [
   {
     name: 'Uelmark G. Valdehueza',
     role: 'Head Developer',
-    img: 'https://avatars.githubusercontent.com/u/76932815',
+    img: azeumarkImg,
   },
   { name: 'JM Nikko O. Gallardo', role: 'Assistant Developer' },
   { name: 'Lara Angel A. Habagat', role: 'Assistant Developer' },
