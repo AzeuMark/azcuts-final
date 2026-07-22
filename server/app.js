@@ -7,6 +7,7 @@ const path = require('path');
 
 const env = require('./config/env');
 const routes = require('./routes');
+const errorHandler = require('./middleware/error');
 
 const app = express();
 
@@ -37,17 +38,7 @@ app.use((req, res) => {
   });
 });
 
-// --- Central error handler (expanded with ApiError in later phases) ---
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  const status = err.statusCode || 500;
-  const logger = require('./utils/logger');
-  if (status >= 500) logger.error(err.stack || err.message);
-  res.status(status).json({
-    success: false,
-    message: err.message || 'Internal Server Error',
-    ...(err.errors ? { errors: err.errors } : {}),
-  });
-});
+// --- Central error handler (must be last) ---
+app.use(errorHandler);
 
 module.exports = app;

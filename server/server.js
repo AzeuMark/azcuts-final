@@ -10,11 +10,9 @@ const logger = require('./utils/logger');
 const server = http.createServer(app);
 
 async function start() {
-  // 1. Filesystem/config prerequisites (e.g. ensure /uploads exists).
-  await bootstrap();
-
-  // 2. Connect to MongoDB. If it is unreachable we still start the HTTP server
-  //    so /api/health responds, and we log a clear, actionable message.
+  // 1. Connect to MongoDB first — bootstrap's Settings seeding depends on it.
+  //    If it is unreachable we still start the HTTP server so /api/health
+  //    responds, and we log a clear, actionable message.
   try {
     await connectDB();
   } catch (err) {
@@ -23,6 +21,9 @@ async function start() {
       'Starting the server anyway. Make sure MongoDB is running at your MONGO_URI, then restart.'
     );
   }
+
+  // 2. Startup tasks (ensure /uploads dir + Settings singleton).
+  await bootstrap();
 
   // 3. Start listening.
   server.listen(env.PORT, () => {

@@ -19,7 +19,7 @@ router.get('/health', (req, res) => {
 });
 
 // Feature routers mount here as each phase lands:
-// router.use('/auth', require('./auth.routes'));            // Phase 1
+router.use('/auth', require('./auth.routes')); // Phase 1
 // router.use('/users', require('./user.routes'));           // Phase 1
 // router.use('/services', require('./inventory.routes'));   // Phase 2
 // router.use('/appointments', require('./appointment.routes')); // Phase 3-4

@@ -1,0 +1,29 @@
+{
+  "_id": "system",
+  "systemMode": "online",
+  "timezone": "Asia/Manila",
+  "region": "PH",
+  "country": "PH",
+  "currency": "PHP",
+  "taxRate": 0,
+  "storeHours": {
+    "mon": { "open": "09:00", "close": "20:00", "closed": false },
+    "tue": { "open": "09:00", "close": "20:00", "closed": false },
+    "wed": { "open": "09:00", "close": "20:00", "closed": false },
+    "thu": { "open": "09:00", "close": "20:00", "closed": false },
+    "fri": { "open": "09:00", "close": "20:00", "closed": false },
+    "sat": { "open": "09:00", "close": "20:00", "closed": false },
+    "sun": { "open": "09:00", "close": "20:00", "closed": true }
+  },
+  "slotStepMinutes": 30,
+  "nicknames": ["Barber", "Hairstylist", "Hairdresser", "Stylist", "No Input"],
+  "shopInfo": {
+    "name": "AzCuts",
+    "tagline": "Look sharp, feel sharp.",
+    "phone": "",
+    "email": "hello@azcuts.com",
+    "address": "",
+    "mapEmbedUrl": "",
+    "socials": {}
+  }
+}
