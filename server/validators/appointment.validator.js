@@ -27,4 +27,9 @@ const cancelRules = [
   body('cancelReason').trim().notEmpty().withMessage('A cancellation reason is required'),
 ];
 
-module.exports = { slotsRules, createBookingRules, statusChangeRules, cancelRules };
+const rateRules = [
+  body('stars').isInt({ min: 1, max: 5 }).withMessage('stars must be an integer 1-5').toInt(),
+  body('comment').optional().trim().isLength({ max: 500 }).withMessage('Comment too long'),
+];
+
+module.exports = { slotsRules, createBookingRules, statusChangeRules, cancelRules, rateRules };

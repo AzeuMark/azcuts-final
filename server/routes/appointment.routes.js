@@ -9,6 +9,7 @@ const {
   createBookingRules,
   statusChangeRules,
   cancelRules,
+  rateRules,
 } = require('../validators/appointment.validator');
 
 const router = express.Router();
@@ -34,5 +35,8 @@ router.patch(
 
 // Cancel (owner, assigned staff, or admin; enforced in the service).
 router.patch('/:id/cancel', auth, cancelRules, validate, ctrl.cancel);
+
+// Rate / edit rating (owner only, appointment must be done; enforced in the service).
+router.post('/:id/rate', auth, requireRole('user'), rateRules, validate, ctrl.rate);
 
 module.exports = router;

@@ -5,6 +5,7 @@ const Appointment = require('../models/Appointment');
 const scheduling = require('../services/scheduling.service');
 const appointmentService = require('../services/appointment.service');
 const receiptService = require('../services/receipt.service');
+const ratingService = require('../services/rating.service');
 
 // (declared below) changeStatus + cancel handlers
 
@@ -108,6 +109,21 @@ const cancel = asyncHandler(async (req, res) => {
   return ok(res, { appointment: appt }, 'Appointment cancelled');
 });
 
+const rate = asyncHandler(async (req, res) => {
+  const { stars, comment } = req.body;
+  const result = await ratingService.rateAppointment({
+    appointmentId: req.params.id,
+    customerId: req.user.id,
+    stars,
+    comment,
+  });
+  return ok(
+    res,
+    { appointment: result.appointment, staff: result.staffStats },
+    result.isEdit ? 'Rating updated' : 'Rating submitted'
+  );
+});
+
 module.exports = {
   availableSlots,
   createBooking,
@@ -116,4 +132,5 @@ module.exports = {
   getReceipt,
   changeStatus,
   cancel,
+  rate,
 };

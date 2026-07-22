@@ -250,3 +250,33 @@ server/validators/staff.validator.js
 server/routes/staff.routes.js
 ```
 **Files changed:** `server/services/appointment.service.js` (state machine + auto-assign in createBooking), `server/controllers/appointment.controller.js` (changeStatus, cancel), `server/validators/appointment.validator.js` (status/cancel rules), `server/routes/appointment.routes.js` (status + cancel), `server/routes/index.js` (mount /staff).
+
+---
+
+### Phase 5 — Ratings  ✅ (2026-07-22)
+
+**Goal:** customers rate a completed appointment (and can edit later); staff rating stats stay accurate.
+
+**What was built**
+- **`services/rating.service.js`**
+  - `recomputeStaffRating(staffId)` — recomputes `avgRating` + `ratingCount` **from that staff's rated appointments** (the appointments are the source of truth). Since `ratingCount` = number of rated appointments, editing an existing rating updates the average but never inflates the count.
+  - `rateAppointment({ appointmentId, customerId, stars, comment })` — owner-only, appointment must be `done`; writes `rating {stars, comment, ratedAt}` and recomputes the assigned staff's stats. Returns `isEdit` so the API can message add vs. update.
+- **Endpoint** — `POST /appointments/:id/rate` (`auth` + `requireRole('user')`; ownership + done-status enforced in the service) with `rateRules` (`stars` int 1–5, `comment` optional ≤500).
+
+**Definition of Done — verified** (temporary Node test, since removed)
+- First rating `4` → staff `avgRating=4`, `ratingCount=1` ("Rating submitted"). ✅
+- **Editing** the same appointment to `2` → `avgRating=2`, **`ratingCount=1`** (no inflation, "Rating updated"). ✅
+- Rating a second appointment `5` → `avgRating=3.5`, `ratingCount=2` (correct averaging). ✅
+- Rating a non-done appointment → **400**; another customer rating it → **403**; `stars=6` → **422**. ✅
+- Staff reset + test data cleaned afterward.
+
+**Notes & decisions**
+- Recompute-from-source (rather than an incremental running average) is what makes edits safe and keeps stats self-healing.
+- The `rating:added` socket event is **deferred to Phase 9** (TODO marker in the service).
+- `GET /staff/history` (Phase 4) already surfaces the ratings list + these stats, so no change was needed there.
+
+**Files created**
+```
+server/services/rating.service.js
+```
+**Files changed:** `server/controllers/appointment.controller.js` (rate), `server/validators/appointment.validator.js` (rateRules), `server/routes/appointment.routes.js` (POST /:id/rate).
