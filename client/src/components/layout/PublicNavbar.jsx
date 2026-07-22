@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 import ThemeToggle from '../ui/ThemeToggle';
+import Avatar from '../ui/Avatar';
 import { useAuth } from '../../hooks/useAuth';
 import cn from '../../utils/cn';
 
@@ -15,18 +16,6 @@ const SECTION_LINKS = [
 
 const HOME_BY_ROLE = { user: '/app', staff: '/staff', admin: '/admin' };
 
-function initialsOf(name = '') {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .map((s) => s[0])
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || 'U'
-  );
-}
-
 function Wordmark() {
   return (
     <Link
@@ -39,7 +28,77 @@ function Wordmark() {
   );
 }
 
-export default function PublicNavbar() {
+// Circular avatar that opens a dropdown with the user's info + sign out.
+function AccountMenu({ user, home, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    const onEsc = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Account menu"
+        className="rounded-full focus-ring"
+      >
+        <Avatar src={user?.avatar} name={user?.fullName} className="h-9 w-9 text-sm ring-1 ring-line" />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 z-dropdown mt-2 w-60 origin-top-right animate-scale-in rounded-xl border border-line bg-surface p-1.5 shadow-pop"
+        >
+          <div className="flex items-center gap-3 px-2.5 py-2">
+            <Avatar src={user?.avatar} name={user?.fullName} className="h-9 w-9 text-sm" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-ink">{user?.fullName || 'Account'}</p>
+              <p className="truncate text-xs text-muted">{user?.email || ''}</p>
+            </div>
+          </div>
+          <div className="my-1 h-px bg-line" />
+          <Link
+            to={home}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="block rounded-lg px-2.5 py-2 text-sm text-ink transition-colors hover:bg-surface-2"
+          >
+            Go to dashboard
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={onLogout}
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-ink transition-colors hover:bg-surface-2 hover:text-danger"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function PublicNavbar({ onAuth }) {
   const { isAuthenticated, user, role, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -52,13 +111,19 @@ export default function PublicNavbar() {
     navigate('/');
   };
 
+  // Guests: open the slide-in panel when available, else fall back to routes.
+  const openAuth = (mode) => {
+    setOpen(false);
+    if (onAuth) onAuth(mode);
+    else navigate(mode === 'register' ? '/register' : '/login');
+  };
+
   return (
     <nav className="sticky top-0 z-sticky border-b border-line bg-app/95 backdrop-blur">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <Wordmark />
 
-          {/* Center section links (desktop) */}
           <div className="hidden items-center gap-8 md:flex">
             {SECTION_LINKS.map(([href, label]) => (
               <a
@@ -71,52 +136,35 @@ export default function PublicNavbar() {
             ))}
           </div>
 
-          {/* Right actions */}
           <div className="flex items-center gap-3">
             <ThemeToggle />
 
             {isAuthenticated ? (
               <>
-                <span className="hidden text-right sm:block">
-                  <span className="block text-xs font-semibold leading-tight text-ink">
-                    {user?.fullName || 'Account'}
-                  </span>
-                  <span className="block text-[11px] leading-tight text-muted">{user?.email || ''}</span>
-                </span>
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 text-xs font-semibold text-brand sm:hidden">
-                  {initialsOf(user?.fullName)}
-                </span>
                 <Link
                   to={home}
-                  className="inline-flex items-center gap-1.5 bg-brand px-4 py-2 text-sm font-bold uppercase tracking-wider text-brand-fg transition-colors hover:bg-brand-hover focus-ring"
+                  className="hidden text-sm font-semibold text-ink transition-colors hover:text-brand sm:block"
                 >
-                  <LayoutDashboard className="h-4 w-4" />
-                  <span className="hidden sm:inline">Dashboard</span>
+                  Dashboard
                 </Link>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  title="Sign out"
-                  aria-label="Sign out"
-                  className="hidden h-9 w-9 items-center justify-center text-muted transition-colors hover:text-accent focus-ring sm:inline-flex"
-                >
-                  <LogOut className="h-5 w-5" />
-                </button>
+                <AccountMenu user={user} home={home} onLogout={handleLogout} />
               </>
             ) : (
               <>
-                <Link
-                  to="/login"
+                <button
+                  type="button"
+                  onClick={() => openAuth('login')}
                   className="hidden text-sm font-medium text-muted transition-colors hover:text-accent sm:block"
                 >
                   Login
-                </Link>
-                <Link
-                  to="/register"
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAuth('register')}
                   className="bg-brand px-4 py-2 text-sm font-bold uppercase tracking-wider text-brand-fg transition-colors hover:bg-brand-hover focus-ring"
                 >
                   Book Now
-                </Link>
+                </button>
               </>
             )}
 
@@ -133,7 +181,7 @@ export default function PublicNavbar() {
         </div>
       </div>
 
-      {/* Mobile section links */}
+      {/* Mobile menu */}
       {open && (
         <div className="border-t border-line bg-app md:hidden">
           <div className="space-y-1 px-4 py-3">
@@ -142,29 +190,36 @@ export default function PublicNavbar() {
                 key={href}
                 href={href}
                 onClick={() => setOpen(false)}
-                className={cn(
-                  'block rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-brand'
-                )}
+                className="block rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-brand"
               >
                 {label}
               </a>
             ))}
             {isAuthenticated ? (
+              <>
+                <Link
+                  to={home}
+                  onClick={() => setOpen(false)}
+                  className="block rounded-lg px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-2"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-danger"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                onClick={handleLogout}
+                onClick={() => openAuth('login')}
                 className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-accent"
               >
-                Sign out
-              </button>
-            ) : (
-              <Link
-                to="/login"
-                onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-accent"
-              >
                 Login
-              </Link>
+              </button>
             )}
           </div>
         </div>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Clock, MapPin, Phone, Mail, Star, Scissors, Sparkles } from 'lucide-react';
 
 import PublicNavbar from '../../components/layout/PublicNavbar';
+import LandingAuthPanel from '../../components/layout/LandingAuthPanel';
 import { Tabs } from '../../components/ui/Tabs';
 import Skeleton from '../../components/ui/Skeleton';
 import Reveal from '../../components/ui/Reveal';
@@ -89,6 +90,15 @@ export default function Landing() {
   const { data, isLoading } = useSettingsPublic();
   const { isAuthenticated, role } = useAuth();
   const [category, setCategory] = useState('all');
+  const [authMode, setAuthMode] = useState(null); // 'login' | 'register' | null
+
+  // Guests open the slide-in auth panel instead of navigating away.
+  const handleBookClick = (e) => {
+    if (!isAuthenticated) {
+      e.preventDefault();
+      setAuthMode('register');
+    }
+  };
 
   const shop = data?.shopInfo || {};
   const currency = data?.currency || 'PHP';
@@ -111,7 +121,12 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-app text-ink" style={{ backgroundImage: DOT_TEXTURE }}>
-      <PublicNavbar />
+      <PublicNavbar onAuth={setAuthMode} />
+      <LandingAuthPanel
+        mode={authMode}
+        onClose={() => setAuthMode(null)}
+        onSwitchMode={setAuthMode}
+      />
 
       {data?.systemMode && data.systemMode !== 'online' && (
         <div className="bg-warning/10 px-4 py-2 text-center text-sm text-warning">
@@ -144,6 +159,7 @@ export default function Landing() {
               <div className="flex flex-col gap-4 sm:flex-row">
                 <Link
                   to={bookHref}
+                  onClick={handleBookClick}
                   className="inline-flex items-center justify-center gap-2 bg-brand px-8 py-4 font-bold uppercase tracking-wider text-brand-fg transition-colors hover:bg-brand-hover focus-ring"
                 >
                   Book Appointment
@@ -261,6 +277,7 @@ export default function Landing() {
                       </span>
                       <Link
                         to={bookHref}
+                        onClick={handleBookClick}
                         className="inline-flex items-center gap-1 text-sm font-semibold uppercase tracking-wider text-accent transition-colors hover:text-accent-hover"
                       >
                         Select <ArrowRight className="h-3.5 w-3.5" />
@@ -418,6 +435,7 @@ export default function Landing() {
             </p>
             <Link
               to={bookHref}
+              onClick={handleBookClick}
               className="inline-flex items-center gap-2 bg-brand px-10 py-5 text-lg font-bold uppercase tracking-wider text-brand-fg transition-transform hover:scale-105 hover:bg-brand-hover focus-ring"
             >
               Book Appointment
@@ -518,12 +536,20 @@ export default function Landing() {
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" className="text-muted transition-colors hover:text-ink">
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('login')}
+                    className="text-muted transition-colors hover:text-ink"
+                  >
                     Log in
-                  </Link>
-                  <Link to="/register" className="font-medium text-brand hover:underline">
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('register')}
+                    className="font-medium text-brand hover:underline"
+                  >
                     Book now
-                  </Link>
+                  </button>
                 </>
               )}
             </div>

@@ -151,7 +151,7 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed 
   };
 
   return (
-    <header className="sticky top-0 z-sticky flex h-16 items-center gap-2 border-b border-line bg-surface/80 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-sticky flex h-16 items-center gap-2 border-b border-line bg-app/80 px-4 backdrop-blur sm:px-6">
       <button
         type="button"
         onClick={onMenuClick}

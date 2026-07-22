@@ -6,6 +6,7 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
+    scroll-behavior: smooth; /* smooth in-page anchor scrolling (nav links) */
   }
 
   body {

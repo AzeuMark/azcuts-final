@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
 import cn from '../../utils/cn';
 
@@ -101,6 +102,7 @@ const Select = forwardRef(function Select(
 
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [menuPos, setMenuPos] = useState(null);
 
   const selected = options.find((o) => String(o.value) === String(currentValue));
   const selectedIndex = options.findIndex((o) => String(o.value) === String(currentValue));
@@ -141,15 +143,49 @@ const Select = forwardRef(function Select(
     return from;
   };
 
-  // Close on outside click / Escape.
+  // Close on outside click (accounting for the portalled popup).
   useEffect(() => {
     if (!open) return undefined;
     const onDown = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      const inWrap = wrapRef.current && wrapRef.current.contains(e.target);
+      const inList = listRef.current && listRef.current.contains(e.target);
+      if (!inWrap && !inList) setOpen(false);
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
+
+  // Position the popup in a fixed-position portal so it's never clipped by an
+  // ancestor's overflow (e.g. the DataTable card) and never scrolls the page.
+  const updatePosition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - r.bottom;
+    const spaceAbove = r.top;
+    const estimate = 260;
+    const openUp = spaceBelow < estimate && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(120, Math.min(240, (openUp ? spaceAbove : spaceBelow) - 12));
+    setMenuPos({
+      left: Math.round(r.left),
+      width: Math.round(r.width),
+      top: openUp ? undefined : Math.round(r.bottom + 6),
+      bottom: openUp ? Math.round(window.innerHeight - r.top + 6) : undefined,
+      maxHeight,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return undefined;
+    updatePosition();
+    const onReflow = () => updatePosition();
+    window.addEventListener('scroll', onReflow, true);
+    window.addEventListener('resize', onReflow);
+    return () => {
+      window.removeEventListener('scroll', onReflow, true);
+      window.removeEventListener('resize', onReflow);
+    };
+  }, [open, updatePosition]);
 
   // When opening, highlight the current selection and scroll it into view.
   useEffect(() => {
@@ -265,14 +301,25 @@ const Select = forwardRef(function Select(
           />
         </button>
 
-        {/* Rounded popup with rounded option items */}
-        {open && (
+        {/* Rounded popup (portalled + fixed so it's never clipped by overflow) */}
+        {open &&
+          menuPos &&
+          createPortal(
           <ul
             id={listboxId}
             role="listbox"
             ref={listRef}
             tabIndex={-1}
-            className="absolute z-dropdown mt-1.5 max-h-60 w-full origin-top overflow-auto rounded-xl border border-line bg-surface p-1.5 shadow-pop animate-scale-in"
+            style={{
+              position: 'fixed',
+              left: menuPos.left,
+              width: menuPos.width,
+              top: menuPos.top,
+              bottom: menuPos.bottom,
+              maxHeight: menuPos.maxHeight,
+              zIndex: 1500,
+            }}
+            className="origin-top overflow-auto rounded-xl border border-line bg-surface p-1.5 shadow-pop animate-scale-in"
           >
             {options.length === 0 ? (
               <li className="px-3 py-2 text-sm text-muted">No options</li>
@@ -302,8 +349,9 @@ const Select = forwardRef(function Select(
                 );
               })
             )}
-          </ul>
-        )}
+          </ul>,
+            document.body
+          )}
       </div>
 
       {error ? (
