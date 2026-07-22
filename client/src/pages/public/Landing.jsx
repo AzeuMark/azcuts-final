@@ -147,7 +147,7 @@ export default function Landing() {
             <img
               src={HERO_IMG}
               alt=""
-              className="h-full w-full object-cover opacity-40 grayscale contrast-125"
+              className="h-full w-full object-cover object-top opacity-40 grayscale contrast-125"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0F1115] via-[#0F1115]/80 to-[#0F1115]/40" />
           </div>
@@ -373,13 +373,13 @@ export default function Landing() {
                 <Reveal
                   key={story.name}
                   direction={i === 0 ? 'left' : 'right'}
-                  className="flex flex-col border border-line bg-surface transition-all hover:-translate-y-0.5 hover:border-brand md:flex-row"
+                  className="group flex flex-col border border-line bg-surface transition-all hover:-translate-y-0.5 hover:border-brand md:flex-row"
                 >
                   <img
                     src={story.img}
                     alt={story.name}
                     loading="lazy"
-                    className="h-48 w-full object-cover grayscale contrast-125 md:h-auto md:w-1/3"
+                    className="h-48 w-full object-cover grayscale contrast-125 transition duration-300 group-hover:grayscale-0 md:h-auto md:w-1/3"
                   />
                   <div className="flex flex-col justify-center p-6">
                     <div className="mb-2 flex gap-0.5 text-brand">

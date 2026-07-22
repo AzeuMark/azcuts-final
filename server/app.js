@@ -46,6 +46,22 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // --- API routes (mounted under /api) ---
 app.use('/api', routes);
 
+// --- Serve the built React client (single-dyno deploy, e.g. Heroku) ---
+// In production the client is built to client/dist and served from this same
+// origin, so the SPA and API share a host (no CORS needed for the app itself).
+if (env.isProd) {
+  const clientDist = path.join(__dirname, '..', 'client', 'dist');
+  app.use(express.static(clientDist));
+
+  // SPA fallback: any non-API GET returns index.html so client-side routing works.
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+      return next();
+    }
+    return res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
+
 // --- 404 for unknown routes ---
 app.use((req, res) => {
   res.status(404).json({

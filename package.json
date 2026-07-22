@@ -1,0 +1,17 @@
+{
+  "name": "azcuts-monorepo-root",
+  "version": "1.0.0",
+  "description": "AzCuts — Barber Shop & Salon (monorepo: Express API + React client) deployed as a single Heroku app.",
+  "private": true,
+  "engines": {
+    "node": "20.x",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "heroku-postbuild": "npm install --prefix server --production=false && npm install --prefix client --production=false && npm run build --prefix client",
+    "start": "npm start --prefix server",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "seed": "npm run seed --prefix server"
+  }
+}

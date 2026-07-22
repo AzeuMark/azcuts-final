@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// In production the client is served from the same origin as the API (single
+// Heroku app), so default to a relative '/api'. Dev falls back to the local API.
+const baseURL =
+  import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api');
 
 /*
  * Access token lives in memory only (never localStorage) — the refresh token
