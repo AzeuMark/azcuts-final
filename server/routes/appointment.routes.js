@@ -1,6 +1,7 @@
 const express = require('express');
 
 const auth = require('../middleware/auth');
+const systemMode = require('../middleware/systemMode');
 const requireRole = require('../middleware/roles');
 const validate = require('../middleware/validate');
 const ctrl = require('../controllers/appointment.controller');
@@ -14,29 +15,25 @@ const {
 
 const router = express.Router();
 
+// Every appointment route is authenticated and mode-gated.
+router.use(auth, systemMode);
+
 // Specific paths must be declared before the catch-all "/:id".
-router.get('/slots', auth, requireRole('user', 'admin'), slotsRules, validate, ctrl.availableSlots);
-router.get('/mine', auth, requireRole('user'), ctrl.listMine);
-router.post('/', auth, requireRole('user'), createBookingRules, validate, ctrl.createBooking);
+router.get('/slots', requireRole('user', 'admin'), slotsRules, validate, ctrl.availableSlots);
+router.get('/mine', requireRole('user'), ctrl.listMine);
+router.post('/', requireRole('user'), createBookingRules, validate, ctrl.createBooking);
 
 // Readable by the owner, the assigned staff, or an admin (checked in controller).
-router.get('/:id', auth, ctrl.getOne);
-router.get('/:id/receipt', auth, ctrl.getReceipt);
+router.get('/:id', ctrl.getOne);
+router.get('/:id/receipt', ctrl.getReceipt);
 
 // Advance the state machine (assigned staff or admin; enforced in the service).
-router.patch(
-  '/:id/status',
-  auth,
-  requireRole('staff', 'admin'),
-  statusChangeRules,
-  validate,
-  ctrl.changeStatus
-);
+router.patch('/:id/status', requireRole('staff', 'admin'), statusChangeRules, validate, ctrl.changeStatus);
 
 // Cancel (owner, assigned staff, or admin; enforced in the service).
-router.patch('/:id/cancel', auth, cancelRules, validate, ctrl.cancel);
+router.patch('/:id/cancel', cancelRules, validate, ctrl.cancel);
 
 // Rate / edit rating (owner only, appointment must be done; enforced in the service).
-router.post('/:id/rate', auth, requireRole('user'), rateRules, validate, ctrl.rate);
+router.post('/:id/rate', requireRole('user'), rateRules, validate, ctrl.rate);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
+const notify = require('./notify.service');
 
 /**
  * Recompute a staff member's rolling rating FROM their rated appointments
@@ -43,8 +44,8 @@ async function rateAppointment({ appointmentId, customerId, stars, comment }) {
   let staffStats = null;
   if (appt.assignedStaff) {
     staffStats = await recomputeStaffRating(appt.assignedStaff);
+    notify.ratingAdded(appt.assignedStaff, staffStats.avgRating);
   }
-  // TODO (Phase 9): notify.ratingAdded(staffId, staffStats.avgRating)
 
   return { appointment: appt, isEdit, staffStats };
 }

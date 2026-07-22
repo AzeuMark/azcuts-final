@@ -40,7 +40,21 @@ function errorHandler(err, req, res, next) {
         : `Upload error: ${err.message}`;
   }
 
-  if (statusCode >= 500) logger.error(err.stack || err.message);
+  // express.json: malformed body / payload too large
+  if (err.type === 'entity.parse.failed' || (err instanceof SyntaxError && 'body' in err)) {
+    statusCode = 400;
+    message = 'Malformed JSON in request body';
+  }
+  if (err.type === 'entity.too.large') {
+    statusCode = 413;
+    message = 'Request body too large';
+  }
+
+  if (statusCode >= 500) {
+    logger.error(err.stack || err.message);
+    // Don't leak internal details in production.
+    if (require('../config/env').isProd) message = 'Internal Server Error';
+  }
 
   res.status(statusCode).json({
     success: false,

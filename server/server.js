@@ -5,9 +5,11 @@ const app = require('./app');
 const connectDB = require('./config/db');
 const bootstrap = require('./config/bootstrap');
 const logger = require('./utils/logger');
+const { initSocket } = require('./socket');
 
-// Wrap the Express app in an HTTP server so Socket.io can attach later (Phase 9).
+// Wrap the Express app in an HTTP server and attach Socket.io.
 const server = http.createServer(app);
+initSocket(server);
 
 async function start() {
   // 1. Connect to MongoDB first — bootstrap's Settings seeding depends on it.
@@ -35,13 +37,23 @@ async function start() {
 start();
 
 // Graceful shutdown
-process.on('SIGINT', () => {
-  logger.info('SIGINT received — shutting down...');
+function shutdown(signal) {
+  logger.info(`${signal} received — shutting down...`);
   server.close(() => process.exit(0));
+  // Force-exit if connections linger.
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+// Last-resort safety nets.
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection:', reason?.message || reason);
 });
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received — shutting down...');
-  server.close(() => process.exit(0));
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception:', err.stack || err.message);
+  // A crashed process is unpredictable; exit so the manager (PM2) restarts it.
+  process.exit(1);
 });
 
 module.exports = server;

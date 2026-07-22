@@ -365,3 +365,123 @@ server/validators/analytics.validator.js
 server/routes/analytics.routes.js
 ```
 **Files changed:** `server/routes/index.js` (mount /analytics).
+
+---
+
+### Phase 8 — System settings & mode gate  ✅ (2026-07-22)
+
+**Goal:** admin-managed system settings + the online/maintenance/offline gate that restricts logins and protected routes.
+
+**What was built**
+- **`middleware/systemMode.js`** (§2.5) — `ALLOWED_BY_MODE` (online=all, maintenance=[staff,admin], offline=[admin]); reads `Settings.systemMode`, passes public/unauthenticated requests through, and returns **503** with a friendly message for disallowed roles. Exports `isAllowed`/`messageFor` for reuse.
+- **Login gate** — `auth.service.login` now applies the same check **after** verifying credentials (the Phase 1 TODO is resolved), so the right roles can still get in during maintenance/offline.
+- **`controllers/settings.controller.js`**
+  - `getPublic` — landing data (shopInfo, timezone, currency, **systemMode** for the client banner, storeHours, active services). Public, no auth.
+  - `getSettings` / `updateSettings` (admin) — update deep-merges `shopInfo` and per-day `storeHours` (with `markModified`) so partial edits don't wipe siblings.
+  - `addNickname` / `updateNickname` / `removeNickname` — manage `Settings.nicknames` with duplicate + not-found guards.
+- **Validators/routes** — `validators/settings.validator.js` (mode enum, `taxRate` 0–1, `slotStepMinutes` 5–240, nickname rules); `routes/settings.routes.js` mounted at `/api/settings` (`/public` open; the rest `auth`+`requireRole('admin')`, deliberately **not** mode-gated so an admin can always toggle the mode back).
+- **Applied the gate** to the user, staff, and appointment routers (`auth → systemMode → requireRole`). `appointment.routes` refactored to `router.use(auth, systemMode)` + per-route `requireRole`. Admin/analytics routers were left ungated (admin is allowed in every mode).
+
+**Definition of Done — verified** (temporary Node test, since removed)
+- Public settings → **200** (shop name, mode, 5 services). Admin get → 200; customer get → **403**. ✅
+- Update `taxRate=0.12` + `shopInfo.phone` → **200**, phone set and `shopInfo.name` **preserved** (deep-merge); customer update → **403**; `taxRate=2` → **422**. ✅
+- Nicknames add/duplicate/rename/not-found/remove → **201/409/200/404/200**. ✅
+- **Login gate:** maintenance → customer **503**, staff/admin **200**; offline → staff **503**, admin **200**; back online → customer **200**. ✅
+- **Middleware gate (existing token):** in maintenance a customer's `GET /appointments/mine` → **503** while staff's `GET /staff/appointments` → **200**; back online → customer **200**. ✅
+- Settings restored to baseline (online, taxRate 0, default nicknames) + test data cleaned afterward.
+
+**Notes & decisions**
+- The mode gate is enforced in **two places**: at login (primary — no token issued) and via middleware on protected routes (defense-in-depth for tokens issued before a mode change).
+- Settings routes are intentionally not mode-gated so an admin can always restore `online` even while offline.
+- `systemMode` reads the settings doc per request (immediate effect on mode changes); acceptable at this scale.
+- Admin/analytics routers skip the gate since admin passes in all modes (avoids a redundant settings read per request).
+
+**Files created**
+```
+server/middleware/systemMode.js
+server/controllers/settings.controller.js
+server/validators/settings.validator.js
+server/routes/settings.routes.js
+```
+**Files changed:** `server/services/auth.service.js` (login mode gate), `server/routes/index.js` (mount /settings), `server/routes/user.routes.js` + `staff.routes.js` + `appointment.routes.js` (apply systemMode).
+
+---
+
+### Phase 9 — Real-time (Socket.io)  ✅ (2026-07-22)
+
+**Goal:** push appointment, assignment, rating, and dashboard events live so portals update without refresh.
+
+**What was built**
+- **`socket/events.js`** — event name constants (`appointment:new/updated/assigned`, `dashboard:refresh`, `rating:added`) + room helpers (`staff`, `admin`, `user:<id>`).
+- **`socket/index.js`** — `initSocket(server)` / `getIO()`. A handshake middleware verifies the access token (`socket.handshake.auth.token`); on connect the socket joins its personal `user:<id>` room, plus `staff` / `admin` by role. Unauthenticated handshakes are rejected.
+- **`services/notify.service.js`** — the single emit funnel: `appointmentNew` (→ staff + admin + dashboard nudge), `appointmentAssigned` (→ the staff's room), `appointmentUpdated` (→ customer + assigned staff + admin + dashboard nudge), `ratingAdded` (→ staff + admin), `dashboardRefresh` (→ admin). No-ops safely if Socket.io isn't initialized (scripts/tests).
+- **Wiring** — `server.js` calls `initSocket(server)`; every `TODO (Phase 9)` marker in `appointment.service` (createBooking, accept, reject/re-route, advanceStatus, cancel) and `rating.service` now emits through `notify`.
+
+**Definition of Done — verified** (temporary Node socket-client test, since removed)
+- Unauthenticated handshake → **rejected**; valid admin/staff/customer sockets connect and join their rooms. ✅
+- Booking → staff receives `appointment:new` (×1) + `appointment:assigned` (×1); admin receives `appointment:new` (×1) + `dashboard:refresh` (×1). ✅
+- accept → start → finish → the customer, admin, and assigned staff each receive **3** `appointment:updated` events. ✅
+- Rating → assigned staff and admin each receive `rating:added`. ✅
+- Test data cleaned; staff reset afterward.
+
+**Notes & decisions**
+- **`dashboard:refresh` is a lightweight signal** (`{ at }`) rather than embedded counters — the admin client refetches `GET /admin/dashboard` on receipt. This avoids running the full aggregation on every appointment event.
+- `notify` resolves `getIO()` at emit time, so there's no load-order coupling and it degrades gracefully when sockets aren't running.
+- Socket CORS mirrors the HTTP CORS (`CLIENT_ORIGIN`, credentials) for the browser client.
+- Added **`socket.io-client`** as a devDependency (used only for this verification; also the client's runtime dep per CLIENT_PLAN).
+
+**Files created**
+```
+server/socket/events.js  index.js
+server/services/notify.service.js
+```
+**Files changed:** `server/server.js` (initSocket), `server/services/appointment.service.js` (notify on every transition + createBooking), `server/services/rating.service.js` (notify ratingAdded), `server/package.json` (socket.io-client devDep).
+
+---
+
+### Phase 10 — Hardening & Deployment setup  ✅ (2026-07-22)
+
+**Goal:** production-readiness — rate limiting, robust error handling, and documented deploy steps.
+
+**What was built**
+- **Rate limiting** (`middleware/rateLimit.js`, `express-rate-limit`): strict `authLimiter` on `/api/auth/*` (30/15min prod, 200 dev) + lenient `apiLimiter` on all `/api` (300/min prod, 2000 dev); 429 responses use the standard `{ success:false, message }` shape and emit `RateLimit-*` headers.
+- **app.js hardening**: JSON/urlencoded body limits (`1mb`), `trust proxy` in production (correct client IPs + Secure cookies behind a proxy), limiters wired in.
+- **Error handler**: malformed JSON → **400**, oversized body → **413**, and 500s no longer leak `err.message` in production (generic message + logged stack).
+- **Process safety** (`server.js`): `unhandledRejection` logged, `uncaughtException` logged then exit (so PM2 restarts), and graceful shutdown with a 10s force-exit fallback.
+- **Deployment**: `ecosystem.config.js` (PM2) + `DEPLOYMENT.md` (prereqs, env, pnpm install, seed, PM2 run, HTTPS/`SameSite=None;Secure` cookie notes, reverse-proxy + WebSocket, CORS lockdown, `mongodump`/`mongorestore` backup, health check).
+
+**Audits**
+- **Validation coverage:** every write route runs a validator chain → central 422 (auth, users, admin users/discount, inventory, appointments status/cancel/rate, staff reject/shift, analytics, settings). ✅
+- **Authorization:** protected routes run `auth → systemMode → requireRole` with ownership checks in controllers/services. ✅
+
+**Definition of Done — verified** (temporary Node test, since removed)
+- Server boots stable with all middleware; `GET /api/health` → **200** with `RateLimit-*` headers. ✅
+- Normal admin login → **200** (auth limiter header shows limit 200 in dev). ✅
+- Malformed JSON body → **400** ("Malformed JSON in request body"). ✅
+- Hammering `/api/auth/login` (215×) → 199 × 401 then **16 × 429** (limiter trips after the threshold). ✅
+- Cleaned accumulated refresh tokens (41) to reset the baseline; the in-memory rate-limit store resets on restart.
+
+**Notes & decisions**
+- Rate-limit store is in-memory (fine for a single instance); for multi-instance, back it with Redis.
+- `apiLimiter` ceilings are generous so they never impede normal client usage; `authLimiter` is the security-relevant one.
+
+**Files created**
+```
+server/middleware/rateLimit.js
+server/ecosystem.config.js
+server/DEPLOYMENT.md
+```
+**Files changed:** `server/app.js` (limits, trust proxy, limiters), `server/middleware/error.js` (parse/size/prod-safe), `server/server.js` (process handlers + graceful shutdown), `server/package.json` (express-rate-limit).
+
+---
+
+## ✅ SERVER BACKEND COMPLETE (Phases 0–10)
+
+All ten server phases are implemented, verified, and logged. The API is feature-complete per `SERVER_PLAN.md`:
+auth (JWT + httpOnly refresh cookie), role-based access, inventory, scheduling + booking (server-authoritative pricing, atomic receipt numbers, no double-booking), the appointment state machine + least-loaded auto-assign, ratings, admin management + analytics/CSV, system settings + mode gate, real-time Socket.io, and production hardening.
+
+**DB baseline:** admin (`admin@azcuts.com` / `Admin@123`) + 2 staff (`miguel@azcuts.com`, `ramon@azcuts.com` / `Staff@123`), 5 services, 4 extras, 1 settings singleton (online), no appointments.
+
+**Run:** `pnpm install` then `npm run dev` (from `/server`). Seed with `node seed/seed.js`.
+
+**Next:** CLIENT implementation (`/client`) per `CLIENT_PLAN.md` — Vite + React + Tailwind (v3) + pnpm, starting at client Phase 0.

@@ -6,6 +6,7 @@ const { nextReceiptNo } = require('../utils/receiptNo');
 const pricingService = require('./pricing.service');
 const scheduling = require('./scheduling.service');
 const assignment = require('./assignment.service');
+const notify = require('./notify.service');
 
 // Legal appointment status transitions (SERVER_PLAN 2.1).
 // 'accepted -> pending' is the staff-reject-to-pool path handled specially below.
@@ -133,7 +134,10 @@ async function createBooking({
     ],
   });
 
-  return appointment.populate(POPULATE);
+  const populated = await appointment.populate(POPULATE);
+  notify.appointmentNew(populated);
+  if (populated.assignedStaff) notify.appointmentAssigned(populated);
+  return populated;
 }
 
 // pending -> accepted. A staff accepts an appointment routed to them, or claims
@@ -171,8 +175,10 @@ async function acceptAppointment(id, staffActor) {
     { new: true }
   );
   if (!updated) throw ApiError.conflict('Appointment is no longer available');
-  // TODO (Phase 9): notify.appointmentUpdated / dashboard:refresh
-  return updated.populate(POPULATE);
+  const populated = await updated.populate(POPULATE);
+  notify.appointmentUpdated(populated);
+  notify.appointmentAssigned(populated);
+  return populated;
 }
 
 // Staff reject (accepted/pending -> pending pool). Clears assignment, keeps the
@@ -212,8 +218,10 @@ async function rejectAppointment(id, staffActor, reason) {
   }
 
   await appt.save();
-  // TODO (Phase 9): notify assigned staff / customer / admin
-  return appt.populate(POPULATE);
+  const populated = await appt.populate(POPULATE);
+  notify.appointmentUpdated(populated);
+  if (populated.assignedStaff) notify.appointmentAssigned(populated);
+  return populated;
 }
 
 // accepted -> in_service -> done, driven by PATCH /appointments/:id/status.
@@ -246,8 +254,9 @@ async function advanceStatus(id, targetStatus, actor) {
   }
 
   await appt.save();
-  // TODO (Phase 9): notify.appointmentUpdated / dashboard:refresh
-  return appt.populate(POPULATE);
+  const populated = await appt.populate(POPULATE);
+  notify.appointmentUpdated(populated);
+  return populated;
 }
 
 // pending/accepted -> cancelled. Allowed for the owner, the assigned staff, or admin.
@@ -275,8 +284,9 @@ async function cancelAppointment(id, actor, reason) {
   pushHistory(appt, 'cancelled', actor, appt.cancelReason);
 
   await appt.save();
-  // TODO (Phase 9): notify.appointmentUpdated / dashboard:refresh
-  return appt.populate(POPULATE);
+  const populated = await appt.populate(POPULATE);
+  notify.appointmentUpdated(populated);
+  return populated;
 }
 
 module.exports = {

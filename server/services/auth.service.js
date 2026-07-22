@@ -3,7 +3,9 @@ const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const User = require('../models/User');
 const RefreshToken = require('../models/RefreshToken');
+const Settings = require('../models/Settings');
 const ApiError = require('../utils/ApiError');
+const { isAllowed, messageFor } = require('../middleware/systemMode');
 
 // We store only a SHA-256 hash of each refresh token (never the raw token).
 function hashToken(token) {
@@ -74,8 +76,13 @@ async function login(email, password) {
   const match = await user.comparePassword(password);
   if (!match) throw ApiError.unauthorized('Invalid email or password');
 
-  // TODO (Phase 8): apply the system-mode gate here, AFTER credentials are
-  // verified, so the right roles can still log in during maintenance/offline (2.5).
+  // System-mode gate (2.5): checked AFTER credentials so the right roles can
+  // still log in during maintenance/offline.
+  const settings = await Settings.findById('system').select('systemMode');
+  const mode = settings?.systemMode || 'online';
+  if (!isAllowed(mode, user.role)) {
+    throw new ApiError(503, messageFor(mode));
+  }
 
   const tokens = await issueTokens(user);
   return { user: user.toPublic(), ...tokens };
