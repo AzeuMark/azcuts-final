@@ -3,12 +3,40 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Menu, Bell, LogOut, ChevronDown, Power, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import ThemeToggle from '../ui/ThemeToggle';
+import Avatar from '../ui/Avatar';
 import { useAuth } from '../../hooks/useAuth';
+import { useSettingsPublic } from '../../hooks/useSettingsPublic';
 import { useSocketEvent } from '../../hooks/useSocketEvent';
 import staffApi from '../../api/staff.api';
 import { getApiErrorMessage } from '../../config/axios';
 import cn from '../../utils/cn';
 import { ROLE_LABEL } from './navConfig';
+
+// Auto-scrolls its text horizontally only when it overflows the fixed-width box,
+// so a long account name never stretches the topbar.
+function MarqueeText({ text, className }) {
+  const wrapRef = useRef(null);
+  const innerRef = useRef(null);
+  const [shift, setShift] = useState(0);
+  useEffect(() => {
+    const w = wrapRef.current;
+    const inner = innerRef.current;
+    if (!w || !inner) return;
+    const diff = inner.scrollWidth - w.clientWidth;
+    setShift(diff > 2 ? diff : 0);
+  }, [text]);
+  return (
+    <span ref={wrapRef} className={cn('block overflow-hidden whitespace-nowrap', className)}>
+      <span
+        ref={innerRef}
+        className={cn('inline-block', shift > 0 && 'animate-marquee')}
+        style={shift > 0 ? { '--marquee-shift': `-${shift}px` } : undefined}
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
 
 function ShiftToggle() {
   const { user, setUser } = useAuth();
@@ -48,15 +76,42 @@ function ShiftToggle() {
   );
 }
 
-function initialsOf(name = '') {
+// System-mode status chip (from admin settings) + live clock.
+const MODE_META = {
+  online: { label: 'Online', dot: 'bg-success', text: 'text-success', ping: true },
+  maintenance: { label: 'Maintenance', dot: 'bg-warning', text: 'text-warning', ping: false },
+  offline: { label: 'Offline', dot: 'bg-danger', text: 'text-danger', ping: false },
+};
+
+function StatusClock() {
+  const { data } = useSettingsPublic();
+  const mode = data?.systemMode || 'online';
+  const meta = MODE_META[mode] || MODE_META.online;
+
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const date = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+
   return (
-    name
-      .trim()
-      .split(/\s+/)
-      .map((s) => s[0])
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || 'U'
+    <div
+      className="hidden items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 lg:flex"
+      title={`System is ${meta.label.toLowerCase()}`}
+    >
+      <span className="relative flex h-2 w-2">
+        {meta.ping && (
+          <span className={cn('absolute inline-flex h-full w-full animate-ping rounded-full opacity-75', meta.dot)} />
+        )}
+        <span className={cn('relative inline-flex h-2 w-2 rounded-full', meta.dot)} />
+      </span>
+      <span className={cn('text-xs font-semibold', meta.text)}>{meta.label}</span>
+      <span className="text-xs text-muted">·</span>
+      <span className="font-mono text-xs tabular-nums text-ink">{time}</span>
+      <span className="text-xs text-muted">{date}</span>
+    </div>
   );
 }
 
@@ -110,9 +165,9 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed 
       <button
         type="button"
         onClick={onToggleSidebar}
-        aria-label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         aria-pressed={sidebarCollapsed}
-        title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+        title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         className="hidden rounded-md p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink focus-ring lg:inline-flex"
       >
         {sidebarCollapsed ? (
@@ -121,6 +176,8 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed 
           <PanelLeftClose className="h-5 w-5" />
         )}
       </button>
+
+      <StatusClock />
 
       <div className="flex-1" />
 
@@ -150,16 +207,15 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed 
           aria-haspopup="menu"
           aria-expanded={menuOpen}
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 text-xs font-semibold text-brand">
-            {initialsOf(user?.fullName)}
-          </span>
+          <Avatar src={user?.avatar} name={user?.fullName} className="h-8 w-8 text-xs" />
           <span className="hidden text-left sm:block">
-            <span className="block text-sm font-medium leading-tight text-ink">
-              {user?.fullName || 'Account'}
-            </span>
+            <MarqueeText
+              text={user?.fullName || 'Account'}
+              className="max-w-[9rem] text-sm font-medium leading-tight text-ink"
+            />
             <span className="block text-xs leading-tight text-muted">{ROLE_LABEL[role] || ''}</span>
           </span>
-          <ChevronDown className="hidden h-4 w-4 text-muted sm:block" />
+          <ChevronDown className="hidden h-4 w-4 shrink-0 text-muted sm:block" />
         </button>
 
         {menuOpen && (

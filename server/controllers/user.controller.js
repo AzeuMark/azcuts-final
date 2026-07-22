@@ -51,14 +51,26 @@ const changePassword = asyncHandler(async (req, res) => {
 });
 
 // POST /users/avatar — upload a profile image (multipart field: "file").
+// Stored in the DB (max 5MB, PNG/JPG/JPEG enforced by the upload middleware).
 const uploadAvatar = asyncHandler(async (req, res) => {
   if (!req.file) throw ApiError.badRequest('No image file uploaded');
   const user = await User.findById(req.user.id);
   if (!user) throw ApiError.notFound('User not found');
 
-  user.avatar = `/uploads/${req.file.filename}`;
+  user.avatarData = req.file.buffer;
+  user.avatarType = req.file.mimetype;
+  user.avatar = `/api/users/${user._id}/avatar?v=${Date.now()}`;
   await user.save();
-  return ok(res, { avatar: user.avatar }, 'Avatar updated');
+  return ok(res, { user: user.toPublic() }, 'Avatar updated');
+});
+
+// GET /users/:id/avatar — stream the DB-stored avatar bytes (public).
+const getAvatar = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id).select('+avatarData +avatarType');
+  if (!user || !user.avatarData) throw ApiError.notFound('Avatar not found');
+  res.set('Content-Type', user.avatarType || 'application/octet-stream');
+  res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  return res.send(user.avatarData);
 });
 
 // PUT /users/theme — persist the user's preferred UI theme across devices.
@@ -72,4 +84,4 @@ const setTheme = asyncHandler(async (req, res) => {
   return ok(res, { user: user.toPublic() }, 'Theme saved');
 });
 
-module.exports = { getProfile, updateProfile, changePassword, uploadAvatar, setTheme };
+module.exports = { getProfile, updateProfile, changePassword, uploadAvatar, getAvatar, setTheme };

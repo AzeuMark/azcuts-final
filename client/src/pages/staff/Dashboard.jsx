@@ -64,6 +64,7 @@ export default function Dashboard() {
   return (
     <div>
       <PageHeader
+        eyebrow="Today"
         title="Staff Dashboard"
         description="Accept incoming appointments and move your queue through the day."
       />
@@ -73,7 +74,7 @@ export default function Dashboard() {
         <section>
           <div className="mb-3 flex items-center gap-2">
             <Inbox className="h-5 w-5 text-brand" />
-            <h2 className="text-lg font-semibold text-ink">Incoming</h2>
+            <h2 className="font-serif text-xl font-semibold text-ink">Incoming</h2>
             <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">
               {incomingList.length}
             </span>
@@ -116,7 +117,7 @@ export default function Dashboard() {
         <section>
           <div className="mb-3 flex items-center gap-2">
             <ListChecks className="h-5 w-5 text-brand" />
-            <h2 className="text-lg font-semibold text-ink">My queue</h2>
+            <h2 className="font-serif text-xl font-semibold text-ink">My queue</h2>
             <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">
               {mineList.length}
             </span>

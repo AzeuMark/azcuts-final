@@ -3,6 +3,7 @@ const { ok, created } = require('../utils/response');
 const ApiError = require('../utils/ApiError');
 const Settings = require('../models/Settings');
 const Service = require('../models/Service');
+const User = require('../models/User');
 
 async function getSingleton() {
   let settings = await Settings.findById('system');
@@ -13,7 +14,13 @@ async function getSingleton() {
 // GET /settings/public — landing-page data (no auth).
 const getPublic = asyncHandler(async (req, res) => {
   const settings = await getSingleton();
-  const services = await Service.find({ isActive: true }).sort({ category: 1, name: 1 });
+  const [services, staff] = await Promise.all([
+    Service.find({ isActive: true }).sort({ category: 1, name: 1 }),
+    // Public "meet the barbers" roster: active staff with only display-safe fields.
+    User.find({ role: 'staff', status: { $in: ['active', 'in_service'] } })
+      .select('fullName nickname avatar avgRating ratingCount')
+      .sort({ totalServed: -1, fullName: 1 }),
+  ]);
   return ok(res, {
     shopInfo: settings.shopInfo,
     timezone: settings.timezone,
@@ -22,6 +29,7 @@ const getPublic = asyncHandler(async (req, res) => {
     storeHours: settings.storeHours,
     nicknames: settings.nicknames, // staff Settings needs the allowed nickname options
     services,
+    staff,
   });
 });
 

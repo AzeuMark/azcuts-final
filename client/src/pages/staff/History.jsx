@@ -49,7 +49,7 @@ export default function History() {
         <StatCard label="Reviews" value={ratings.length} icon={MessageSquare} tone="brand" loading={isLoading} />
       </div>
 
-      <h2 className="mb-3 text-lg font-semibold text-ink">Completed appointments</h2>
+      <h2 className="mb-3 font-serif text-xl font-semibold text-ink">Completed appointments</h2>
       <DataTable
         columns={columns}
         data={appointments}
@@ -59,7 +59,7 @@ export default function History() {
 
       {ratings.length > 0 && (
         <div className="mt-8">
-          <h2 className="mb-3 text-lg font-semibold text-ink">Recent reviews</h2>
+          <h2 className="mb-3 font-serif text-xl font-semibold text-ink">Recent reviews</h2>
           <div className="space-y-3">
             {ratings
               .filter((r) => r.comment)

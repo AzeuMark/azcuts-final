@@ -65,6 +65,8 @@ export default {
         ],
         // Editorial display face for landing/marketing headlines.
         display: ['Oswald', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        // Refined serif for dashboard headings & stat numbers.
+        serif: ['Fraunces', 'ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],
       },
       boxShadow: {
         card: '0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06)',
@@ -88,12 +90,29 @@ export default {
           from: { transform: 'translateX(-100%)' },
           to: { transform: 'translateX(0)' },
         },
+        'fade-in-up': {
+          from: { opacity: '0', transform: 'translateY(12px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        // Scrolling barber-pole stripe for the dashboard brand mark.
+        barber: {
+          '0%': { backgroundPosition: '0 0' },
+          '100%': { backgroundPosition: '34px 0' },
+        },
+        // Horizontal auto-scroll for overflowing text (e.g. long account names).
+        marquee: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(var(--marquee-shift, 0px))' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 150ms ease-out',
         'scale-in': 'scale-in 160ms cubic-bezier(0.22, 1, 0.36, 1)',
         'slide-in-right': 'slide-in-right 220ms cubic-bezier(0.22, 1, 0.36, 1)',
         'slide-in-left': 'slide-in-left 220ms cubic-bezier(0.22, 1, 0.36, 1)',
+        'fade-in-up': 'fade-in-up 500ms cubic-bezier(0.16, 1, 0.3, 1) both',
+        barber: 'barber 2.4s linear infinite',
+        marquee: 'marquee 5s linear infinite alternate',
       },
     },
   },

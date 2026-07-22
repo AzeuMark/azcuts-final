@@ -33,7 +33,11 @@ const userSchema = new mongoose.Schema(
       default: 'active',
     },
     isApproved: { type: Boolean, default: true }, // reserved
+    // `avatar` is the servable URL (GET /api/users/:id/avatar). The bytes live on
+    // the document and are kept out of normal queries via `select: false`.
     avatar: { type: String },
+    avatarData: { type: Buffer, select: false },
+    avatarType: { type: String, select: false },
     // Preferred UI theme, persisted across devices. Unset until the user (or the
     // first authenticated sync) saves one.
     theme: { type: String, enum: ['light', 'dark'] },
@@ -61,10 +65,12 @@ userSchema.methods.comparePassword = function comparePassword(candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
-// Public-safe projection (drops password + internal fields).
+// Public-safe projection (drops password + raw image bytes + internal fields).
 userSchema.methods.toPublic = function toPublic() {
   const obj = this.toObject({ versionKey: false });
   delete obj.password;
+  delete obj.avatarData;
+  delete obj.avatarType;
   return obj;
 };
 

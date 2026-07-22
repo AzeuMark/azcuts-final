@@ -46,15 +46,22 @@ export default function DashboardShell() {
   if (blocked) return <Navigate to="/maintenance" replace />;
 
   return (
-    <div className="min-h-screen bg-app">
-      {/* Desktop sidebar (collapsible / hideable) */}
+    <div
+      className="min-h-screen bg-app"
+      style={{
+        backgroundImage:
+          'radial-gradient(ellipse 900px 600px at 0% -10%, rgba(225,29,72,0.10), transparent 60%), radial-gradient(ellipse 800px 600px at 100% 100%, rgba(14,165,233,0.07), transparent 60%)',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      {/* Desktop sidebar — collapses to an icon rail (not fully hidden) */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 w-64 border-r border-line transition-transform duration-200',
-          collapsed ? 'lg:-translate-x-full' : 'hidden lg:block lg:translate-x-0'
+          'fixed inset-y-0 left-0 hidden border-r border-line transition-all duration-200 lg:block',
+          collapsed ? 'lg:w-20' : 'lg:w-64'
         )}
       >
-        <Sidebar role={role} />
+        <Sidebar role={role} collapsed={collapsed} />
       </aside>
 
       {/* Mobile drawer */}
@@ -79,7 +86,7 @@ export default function DashboardShell() {
         </div>
       )}
 
-      <div className={cn('transition-[padding] duration-200', collapsed ? 'lg:pl-0' : 'lg:pl-64')}>
+      <div className={cn('transition-[padding] duration-200', collapsed ? 'lg:pl-20' : 'lg:pl-64')}>
         <Topbar
           onMenuClick={() => setDrawerOpen(true)}
           onToggleSidebar={toggleCollapsed}

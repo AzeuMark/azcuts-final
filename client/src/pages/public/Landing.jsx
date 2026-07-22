@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Clock, MapPin, Phone, Mail, Star } from 'lucide-react';
+import { ArrowRight, Clock, MapPin, Phone, Mail, Star, Scissors, Sparkles } from 'lucide-react';
 
 import PublicNavbar from '../../components/layout/PublicNavbar';
 import { Tabs } from '../../components/ui/Tabs';
 import Skeleton from '../../components/ui/Skeleton';
+import Reveal from '../../components/ui/Reveal';
 import { useSettingsPublic } from '../../hooks/useSettingsPublic';
 import { useAuth } from '../../hooks/useAuth';
 import { formatMoney } from '../../utils/formatMoney';
@@ -15,17 +16,12 @@ import cn from '../../utils/cn';
 // Where the "Book" CTAs go: guests register first; signed-in users land in their portal.
 const BOOK_BY_ROLE = { user: '/app/book', staff: '/staff', admin: '/admin' };
 
-// Editorial photography (grayscale-treated in the UI).
+// Editorial hero photography (grayscale-treated in the UI).
 const HERO_IMG =
   'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80';
-const CATEGORY_IMG = {
-  haircut:
-    'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-  salon:
-    'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-};
-const FALLBACK_SERVICE_IMG =
-  'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80';
+
+// Category icon used as the service fallback when no image is uploaded.
+const CATEGORY_ICON = { haircut: Scissors, salon: Sparkles };
 
 // Subtle dotted texture (from the design template).
 const DOT_TEXTURE =
@@ -37,25 +33,11 @@ const STATS = [
   { value: '4.9', label: 'Avg. Rating', tone: 'brand' },
 ];
 
-const TEAM = [
-  {
-    name: 'Uelmark G. Valdehueza',
-    role: 'Head Barber / Founder',
-    bio: '10+ years specializing in classic cuts and modern fades. The visionary behind AzCuts.',
-    img: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    name: 'JM Nikko O. Gallardo',
-    role: 'Style Barber',
-    bio: 'Expert in beard sculpting and urban styles. A detail-oriented precisionist.',
-    img: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    name: 'Lara Angel A. Habagat',
-    role: 'Salon Specialist',
-    bio: 'Master of color, treatments, and transformations. Brings artistry to every session.',
-    img: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-  },
+// The people who built AzCuts (credited in a small section, separate from barbers).
+const DEVELOPERS = [
+  { name: 'Uelmark G. Valdehueza', role: 'Head Developer' },
+  { name: 'JM Nikko O. Gallardo', role: 'Assistant Developer' },
+  { name: 'Lara Angel A. Habagat', role: 'Assistant Developer' },
 ];
 
 const STORIES = [
@@ -85,8 +67,16 @@ const DAYS = [
   ['sun', 'Sun'],
 ];
 
-function serviceImage(s) {
-  return serverAsset(s.image) || CATEGORY_IMG[s.category] || FALLBACK_SERVICE_IMG;
+function initialsOf(name = '') {
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .map((s) => s[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || '?'
+  );
 }
 
 function Eyebrow({ children }) {
@@ -103,6 +93,7 @@ export default function Landing() {
   const shop = data?.shopInfo || {};
   const currency = data?.currency || 'PHP';
   const services = data?.services || [];
+  const staff = data?.staff || [];
   const storeHours = data?.storeHours || {};
   const socials = shop.socials || {};
 
@@ -113,10 +104,13 @@ export default function Landing() {
     [services, category]
   );
 
-  const stats = [...STATS, { value: String(TEAM.length), label: 'Master Barbers', tone: 'accent' }];
+  const stats = [
+    ...STATS,
+    { value: String(staff.length || 0), label: 'Master Barbers', tone: 'accent' },
+  ];
 
   return (
-    <div className="min-h-screen bg-app text-ink" style={{ backgroundImage: DOT_TEXTURE }}>
+    <div className="min-h-screen overflow-x-hidden bg-app text-ink" style={{ backgroundImage: DOT_TEXTURE }}>
       <PublicNavbar />
 
       {data?.systemMode && data.systemMode !== 'online' && (
@@ -137,7 +131,7 @@ export default function Landing() {
             <div className="absolute inset-0 bg-gradient-to-t from-[#0F1115] via-[#0F1115]/80 to-[#0F1115]/40" />
           </div>
           <div className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 md:py-32 lg:px-8">
-            <div className="max-w-3xl">
+            <Reveal direction="left" className="max-w-3xl">
               <Eyebrow>Sharp Looks. Effortless Booking.</Eyebrow>
               <h1 className="mb-6 font-display text-5xl font-bold uppercase leading-none text-white md:text-7xl">
                 Precision Cuts. <br />
@@ -162,7 +156,7 @@ export default function Landing() {
                   View Services
                 </a>
               </div>
-            </div>
+            </Reveal>
           </div>
         </section>
 
@@ -170,8 +164,8 @@ export default function Landing() {
         <section className="border-b border-line bg-surface">
           <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 gap-8 text-center md:grid-cols-4">
-              {stats.map((s) => (
-                <div key={s.label}>
+              {stats.map((s, i) => (
+                <Reveal key={s.label} direction="up" delay={i * 100}>
                   <p
                     className={cn(
                       'font-display text-4xl font-bold',
@@ -181,7 +175,7 @@ export default function Landing() {
                     {s.value}
                   </p>
                   <p className="mt-1 text-sm uppercase tracking-wider text-muted">{s.label}</p>
-                </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -191,13 +185,13 @@ export default function Landing() {
         <section id="services" className="scroll-mt-20 border-b border-line">
           <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="mb-12 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
-              <div>
+              <Reveal direction="left">
                 <Eyebrow>What We Do</Eyebrow>
                 <h2 className="font-display text-4xl font-bold uppercase text-ink md:text-5xl">
                   Our Services
                 </h2>
-              </div>
-              <div className="flex flex-col gap-4 md:items-end">
+              </Reveal>
+              <Reveal direction="right" className="flex flex-col gap-4 md:items-end">
                 <p className="max-w-md text-sm leading-relaxed text-muted">
                   Whether you need a sharp fade, a salon treatment, or a complete transformation, we
                   have the expertise. Pick one when you book.
@@ -211,7 +205,7 @@ export default function Landing() {
                     { value: 'salon', label: 'Salon' },
                   ]}
                 />
-              </div>
+              </Reveal>
             </div>
 
             {isLoading ? (
@@ -228,18 +222,32 @@ export default function Landing() {
               <p className="text-center text-sm text-muted">No services in this category yet.</p>
             ) : (
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {filtered.map((service) => (
-                  <div
+                {filtered.map((service, i) => (
+                  <Reveal
                     key={service._id}
-                    className="group flex flex-col border border-line bg-surface p-6 transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-card-hover"
+                    direction="up"
+                    delay={(i % 3) * 120}
+                    className="h-full"
+                  >
+                  <div
+                    className="group flex h-full flex-col border border-line bg-surface p-6 transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-card-hover"
                   >
                     <div className="mb-4 h-48 overflow-hidden">
-                      <img
-                        src={serviceImage(service)}
-                        alt={service.name}
-                        loading="lazy"
-                        className="h-full w-full object-cover grayscale contrast-125 transition duration-300 group-hover:grayscale-0"
-                      />
+                      {serverAsset(service.image) ? (
+                        <img
+                          src={serverAsset(service.image)}
+                          alt={service.name}
+                          loading="lazy"
+                          className="h-full w-full object-cover grayscale contrast-125 transition duration-300 group-hover:grayscale-0"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand/20 via-surface-2 to-accent/10">
+                          {(() => {
+                            const Icon = CATEGORY_ICON[service.category] || Scissors;
+                            return <Icon className="h-10 w-10 text-brand/70" />;
+                          })()}
+                        </div>
+                      )}
                     </div>
                     <h3 className="mb-2 font-display text-2xl font-bold uppercase text-ink">
                       {service.name}
@@ -259,39 +267,67 @@ export default function Landing() {
                       </Link>
                     </div>
                   </div>
+                  </Reveal>
                 ))}
               </div>
             )}
           </div>
         </section>
 
-        {/* Team / Barbers */}
+        {/* Team / Barbers — real staff roster from the API */}
         <section id="team" className="scroll-mt-20 border-b border-line bg-surface">
           <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-            <div className="mb-12 text-center">
+            <Reveal direction="fade" className="mb-12 text-center">
               <Eyebrow>The Professionals</Eyebrow>
               <h2 className="font-display text-4xl font-bold uppercase text-ink md:text-5xl">
                 Meet The Barbers
               </h2>
-            </div>
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {TEAM.map((member) => (
-                <div key={member.name} className="group">
-                  <div className="relative mb-4 overflow-hidden">
-                    <img
-                      src={member.img}
-                      alt={member.name}
-                      loading="lazy"
-                      className="h-80 w-full object-cover grayscale transition duration-300 group-hover:grayscale-0"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F1115] to-transparent" />
-                  </div>
-                  <h3 className="font-display text-xl font-bold uppercase text-ink">{member.name}</h3>
-                  <p className="mb-2 text-sm font-semibold text-brand">{member.role}</p>
-                  <p className="text-sm text-muted">{member.bio}</p>
-                </div>
-              ))}
-            </div>
+            </Reveal>
+
+            {staff.length === 0 ? (
+              <p className="text-center text-sm text-muted">
+                Our barbers will be introduced here soon.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                {staff.map((barber, i) => (
+                  <Reveal key={barber._id} direction="up" delay={(i % 3) * 120} className="group">
+                    <div className="relative mb-4 aspect-[3/4] overflow-hidden">
+                      {serverAsset(barber.avatar) ? (
+                        <img
+                          src={serverAsset(barber.avatar)}
+                          alt={barber.fullName}
+                          loading="lazy"
+                          className="h-full w-full object-cover grayscale transition duration-300 group-hover:grayscale-0"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand/20 via-surface-2 to-accent/10">
+                          <span className="font-serif text-5xl font-semibold text-brand">
+                            {initialsOf(barber.fullName)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0F1115] to-transparent" />
+                    </div>
+                    <h3 className="font-display text-xl font-bold uppercase text-ink">
+                      {barber.fullName}
+                    </h3>
+                    <p className="mb-1 text-sm font-semibold text-brand">
+                      {barber.nickname || 'Barber'}
+                    </p>
+                    {barber.ratingCount > 0 && (
+                      <p className="flex items-center gap-1 text-sm text-muted">
+                        <Star className="h-3.5 w-3.5 fill-current text-brand" />
+                        {Number(barber.avgRating).toFixed(1)}
+                        <span className="text-xs">
+                          ({barber.ratingCount} review{barber.ratingCount === 1 ? '' : 's'})
+                        </span>
+                      </p>
+                    )}
+                  </Reveal>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -299,20 +335,21 @@ export default function Landing() {
         <section id="stories" className="scroll-mt-20 border-b border-line">
           <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="mb-12 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
-              <div>
+              <Reveal direction="left">
                 <Eyebrow>Real Results</Eyebrow>
                 <h2 className="font-display text-4xl font-bold uppercase text-ink md:text-5xl">
                   Client Stories
                 </h2>
-              </div>
-              <p className="max-w-md text-sm leading-relaxed text-muted">
+              </Reveal>
+              <Reveal direction="right" as="p" className="max-w-md text-sm leading-relaxed text-muted">
                 Transformations that speak for themselves. Join the community of satisfied clients.
-              </p>
+              </Reveal>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {STORIES.map((story) => (
-                <div
+              {STORIES.map((story, i) => (
+                <Reveal
                   key={story.name}
+                  direction={i === 0 ? 'left' : 'right'}
                   className="flex flex-col border border-line bg-surface transition-all hover:-translate-y-0.5 hover:border-brand md:flex-row"
                 >
                   <img
@@ -333,15 +370,45 @@ export default function Landing() {
                     </p>
                     <p className="text-xs text-muted">{story.detail}</p>
                   </div>
-                </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Developers — small credits row, distinct from the barbers */}
+        <section id="developers" className="scroll-mt-20 border-b border-line">
+          <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
+            <Reveal direction="fade" className="mb-8 text-center">
+              <Eyebrow>Behind The Build</Eyebrow>
+              <h2 className="font-display text-2xl font-bold uppercase text-ink md:text-3xl">
+                The Developers
+              </h2>
+            </Reveal>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {DEVELOPERS.map((dev, i) => (
+                <Reveal
+                  key={dev.name}
+                  direction="up"
+                  delay={i * 100}
+                  className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-semibold text-accent">
+                    {initialsOf(dev.name)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-ink">{dev.name}</p>
+                    <p className="text-xs text-muted">{dev.role}</p>
+                  </div>
+                </Reveal>
               ))}
             </div>
           </div>
         </section>
 
         {/* CTA */}
-        <section className="border-b border-line bg-surface">
-          <div className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6 lg:px-8">
+        <section className="bg-surface">
+          <Reveal direction="up" className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6 lg:px-8">
             <h2 className="mb-4 font-display text-4xl font-bold uppercase text-ink md:text-5xl">
               Ready for a <span className="text-brand">Sharp</span> Look?
             </h2>
@@ -356,7 +423,7 @@ export default function Landing() {
               Book Appointment
               <ArrowRight className="h-5 w-5" />
             </Link>
-          </div>
+          </Reveal>
         </section>
       </main>
 

@@ -35,7 +35,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" description="A live snapshot of the shop today." />
+      <PageHeader eyebrow="Overview · Today" title="Dashboard" description="A live snapshot of the shop today." />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Active staff" value={d.activeStaff ?? 0} icon={UserCheck} tone="success" loading={isLoading} />
@@ -53,7 +53,7 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-8">
-        <h2 className="mb-3 text-lg font-semibold text-ink">Recent bookings</h2>
+        <h2 className="mb-3 font-serif text-xl font-semibold text-ink">Recent bookings</h2>
         <DataTable columns={columns} data={recent.data?.appointments || []} loading={recent.isLoading} />
       </div>
     </div>
