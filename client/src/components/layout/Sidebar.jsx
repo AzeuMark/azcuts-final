@@ -18,7 +18,7 @@ function BrandMark({ role, collapsed }) {
         />
       </div>
       {!collapsed && (
-        <div className="leading-none">
+        <div className="animate-fade-in leading-none">
           <div className="font-serif text-xl font-semibold tracking-tight text-ink">AzCuts</div>
           <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted">
             {ROLE_LABEL[role] || 'Portal'}
@@ -49,7 +49,7 @@ export default function Sidebar({ role, onNavigate, collapsed = false }) {
         </div>
       )}
 
-      <nav className={cn('flex-1 space-y-1 overflow-y-auto py-3', collapsed ? 'px-2' : 'px-3')}>
+      <nav className={cn('stagger flex-1 space-y-1 overflow-y-auto py-3', collapsed ? 'px-2' : 'px-3')}>
         {items.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -76,7 +76,7 @@ export default function Sidebar({ role, onNavigate, collapsed = false }) {
                   />
                 )}
                 <Icon className="h-[18px] w-[18px] shrink-0 transition-transform group-hover:translate-x-0.5" />
-                {!collapsed && <span className="truncate">{label}</span>}
+                {!collapsed && <span className="animate-fade-in truncate">{label}</span>}
               </>
             )}
           </NavLink>

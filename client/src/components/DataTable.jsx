@@ -25,7 +25,7 @@ export default function DataTable({
   className,
 }) {
   return (
-    <div className={cn('overflow-hidden rounded-2xl border border-line bg-surface shadow-card', className)}>
+    <div className={cn('animate-fade-in-up overflow-hidden rounded-2xl border border-line bg-surface shadow-card', className)}>
       <Table>
         <THead>
           <TR>

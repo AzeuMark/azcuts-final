@@ -69,7 +69,7 @@ export default function Dashboard() {
         description="Accept incoming appointments and move your queue through the day."
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="stagger grid gap-6 lg:grid-cols-2">
         {/* Incoming */}
         <section>
           <div className="mb-3 flex items-center gap-2">
@@ -86,7 +86,7 @@ export default function Dashboard() {
           ) : incomingList.length === 0 ? (
             <EmptyState icon={Inbox} title="No incoming appointments" description="New bookings routed to you will appear here." />
           ) : (
-            <div className="space-y-3">
+            <div className="stagger space-y-3">
               {incomingList.map((a) => (
                 <AppointmentCard
                   key={a._id}
@@ -129,7 +129,7 @@ export default function Dashboard() {
           ) : mineList.length === 0 ? (
             <EmptyState icon={ListChecks} title="Your queue is empty" description="Accepted appointments show up here to start and finish." />
           ) : (
-            <div className="space-y-3">
+            <div className="stagger space-y-3">
               {mineList.map((a) => (
                 <AppointmentCard
                   key={a._id}

@@ -57,7 +57,7 @@ export default function DashboardShell() {
       {/* Desktop sidebar — collapses to an icon rail (not fully hidden) */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 hidden border-r border-line transition-all duration-200 lg:block',
+          'fixed inset-y-0 left-0 hidden border-r border-line transition-[width] duration-300 ease-out lg:block',
           collapsed ? 'lg:w-20' : 'lg:w-64'
         )}
       >
@@ -86,7 +86,7 @@ export default function DashboardShell() {
         </div>
       )}
 
-      <div className={cn('transition-[padding] duration-200', collapsed ? 'lg:pl-20' : 'lg:pl-64')}>
+      <div className={cn('transition-[padding] duration-300 ease-out', collapsed ? 'lg:pl-20' : 'lg:pl-64')}>
         <Topbar
           onMenuClick={() => setDrawerOpen(true)}
           onToggleSidebar={toggleCollapsed}

@@ -36,7 +36,7 @@ export default function History() {
     <div>
       <PageHeader title="Served History" description="Your completed appointments and ratings." />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="stagger mb-6 grid gap-4 sm:grid-cols-3">
         <StatCard label="Total served" value={stats.totalServed} icon={CheckCircle2} tone="success" loading={isLoading} />
         <StatCard
           label="Average rating"

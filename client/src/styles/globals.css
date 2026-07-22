@@ -75,6 +75,36 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Staggered entrance for a container's direct children (dashboard stat cards,
+     sidebar nav items, etc.). Add `stagger` to the parent. */
+  .stagger > * {
+    animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .stagger > *:nth-child(1) {
+    animation-delay: 40ms;
+  }
+  .stagger > *:nth-child(2) {
+    animation-delay: 90ms;
+  }
+  .stagger > *:nth-child(3) {
+    animation-delay: 140ms;
+  }
+  .stagger > *:nth-child(4) {
+    animation-delay: 190ms;
+  }
+  .stagger > *:nth-child(5) {
+    animation-delay: 240ms;
+  }
+  .stagger > *:nth-child(6) {
+    animation-delay: 290ms;
+  }
+  .stagger > *:nth-child(7) {
+    animation-delay: 340ms;
+  }
+  .stagger > *:nth-child(8) {
+    animation-delay: 390ms;
+  }
+
   /* Respect reduced-motion everywhere (DESIGN.md motion rule). */
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -84,6 +114,10 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
+    }
+    /* Disable staggered entrances entirely so nothing stays hidden behind a delay. */
+    .stagger > * {
+      animation: none !important;
     }
   }
 }

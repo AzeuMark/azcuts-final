@@ -37,7 +37,7 @@ export default function Dashboard() {
     <div>
       <PageHeader eyebrow="Overview · Today" title="Dashboard" description="A live snapshot of the shop today." />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Active staff" value={d.activeStaff ?? 0} icon={UserCheck} tone="success" loading={isLoading} />
         <StatCard label="In service now" value={d.inService ?? 0} icon={Scissors} tone="brand" loading={isLoading} />
         <StatCard label="Bookings today" value={d.bookingsToday ?? 0} icon={CalendarDays} tone="info" loading={isLoading} />
