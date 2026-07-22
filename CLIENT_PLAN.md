@@ -16,6 +16,7 @@
 | **Booking** | Multi-step wizard: Service → Extras → Schedule (slot + staff/auto) → Payment → Confirm → Receipt |
 | **Scheduling UI** | Fixed **time-slot picker** (server returns available slots) |
 | **Images** | Served from server `/uploads/*`; template images used until real ones uploaded |
+| **Branding / Logo** | App logo currently at `/AzCuts/templates/website-logo.png`. **To be moved into the client at `/client/public/assets/website-logo.png` during Phase 0** (referenced in code as `/assets/website-logo.png`). Used by `PublicNavbar`, `Topbar`, Landing hero, `ReceiptCard`, and the `index.html` favicon. Do not move yet — defer to Phase 0 scaffolding |
 | **Ratings** | Modal prompt after a booking turns **Done** + editable star control in Booking History |
 | **Discounts** | Shown on receipt/summary; **set by admin** (client just displays the server-computed number) |
 | **Real-time** | Socket.io client → live dashboard + status updates, toast notifications |
@@ -141,8 +142,10 @@ Auth guard reads role from the decoded user; wrong role → redirect to that rol
     ├── .env                         # REACT_APP_API_URL=http://localhost:5000/api, REACT_APP_SOCKET_URL=http://localhost:5000
     ├── .env.example                 # Template for teammates.
     ├── /public
-    │   ├── index.html               # Root HTML; sets initial [data-theme] before paint (no-flash script).
-    │   └── /assets/templates        # Template haircut/service images used until real ones uploaded.
+    │   ├── index.html               # Root HTML; sets initial [data-theme] before paint (no-flash script). References /assets/website-logo.png as favicon.
+    │   └── /assets
+    │       ├── website-logo.png     # App/brand logo. SOURCE: /AzCuts/templates/website-logo.png → MOVE here in Phase 0. Referenced as /assets/website-logo.png by PublicNavbar, Topbar, Landing hero, ReceiptCard.
+    │       └── /templates           # Template haircut/service images used until real ones uploaded.
     └── /src
         ├── index.js                 # React root; wraps App in QueryClient, Router, Auth/Theme/Socket providers.
         ├── App.jsx                   # Route table (§2.1) + layout selection per role.
@@ -315,7 +318,7 @@ Live updates: if auto-assign couldn't place staff, the confirmation clearly stat
 ## 6. IMPLEMENTATION PHASES (client) — log each in `/AzCuts/implemented.md`
 Kept **in lockstep with the server phases** so features are testable end-to-end.
 
-- **Phase 0 — Skeleton & design system:** CRA/Vite init, install deps, **install + configure Tailwind CSS** (`npm i -D tailwindcss postcss autoprefixer` → `npx tailwindcss init -p` → set `darkMode:'class'`, content globs, color tokens, add `@tailwind` directives to `globals.css` — see §1.3), Router, providers, **light/dark toggle** (`dark` class on `<html>`), `/ui` base components (Tailwind-styled), DashboardShell/Sidebar/Topbar, Axios instance. **DoD:** app runs, Tailwind classes apply, theme toggle flips light/dark, empty routes render.
+- **Phase 0 — Skeleton & design system:** CRA/Vite init, install deps, **install + configure Tailwind CSS** (`npm i -D tailwindcss postcss autoprefixer` → `npx tailwindcss init -p` → set `darkMode:'class'`, content globs, color tokens, add `@tailwind` directives to `globals.css` — see §1.3), Router, providers, **light/dark toggle** (`dark` class on `<html>`), `/ui` base components (Tailwind-styled), DashboardShell/Sidebar/Topbar, Axios instance, **move `/AzCuts/templates/website-logo.png` → `/client/public/assets/website-logo.png`** and wire it into the navbar/topbar/favicon. **DoD:** app runs, Tailwind classes apply, theme toggle flips light/dark, empty routes render, logo displays.
 - **Phase 1 — Auth & guards:** Login/Register, AuthContext, protected + role-gated routes, silent refresh, redirect-by-role. **DoD:** admin (seed) + new customer can log in and land on the right portal.
 - **Phase 2 — Landing page:** hero, services gallery (from `/settings/public`), about, contact, location — polished & responsive. **DoD:** landing looks modern in both themes and lists live services.
 - **Phase 3 — Inventory display + Booking data:** service/extra fetching, `ServiceCard`, `SlotPicker`, `StaffPicker`. **DoD:** wizard steps 1–3 render live data.

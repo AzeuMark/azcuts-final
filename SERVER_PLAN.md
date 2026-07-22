@@ -319,6 +319,7 @@ settings = 1 singleton doc
     │   ├── response.js                # Uniform success/error JSON shapers.
     │   ├── receiptNo.js               # Daily-counter receipt number generator.
     │   ├── datetime.js                # Asia/Manila-aware helpers (day boundaries, week/month ranges) using Luxon/dayjs.
+    │   ├── AESCrypt.js                # AES symmetric crypto helper. Exports encrypt(text, key) + decrypt(text, key) (2 params each). Key defaults to AES_SECRET_KEY (currently "azeumark", placeholder). Reversible encryption for sensitive fields the system must read back — NOT for passwords (those stay bcrypt). See §6.1.
     │   └── logger.js                  # Console/file logger.
     │
     ├── /uploads                       # Multer-written images (services, avatars). Static-served at /uploads/*. .gitkeep only.
@@ -405,6 +406,24 @@ settings = 1 singleton doc
 - Authorization: every non-public route runs `auth` → `systemMode` → `requireRole` (as needed) → controller.
 - Ownership checks in controllers (a user can only read/modify their own appointment/profile).
 - Never trust client money/role/status — recompute/verify server-side.
+- **AES encryption (`utils/AESCrypt.js`)**: reversible symmetric crypto for sensitive values the system must decrypt again later. Exposes `encrypt(text, key)` + `decrypt(text, key)`; key sourced from `AES_SECRET_KEY` (currently the placeholder `"azeumark"`, to be changed later). Kept separate from bcrypt — bcrypt is one-way for passwords, AESCrypt is two-way for readable data.
+
+### 6.1 AESCrypt utility (`utils/AESCrypt.js`) — reversible field encryption
+A small symmetric-encryption helper used wherever the system must **store then read back** a sensitive value (i.e. data that can't be a one-way bcrypt hash). Two functions, each taking the payload and the secret key explicitly:
+
+```js
+// utils/AESCrypt.js   (AES — e.g. via crypto-js, or Node's built-in crypto)
+function encrypt(text, key) { /* → returns cipher string */ }
+function decrypt(text, key) { /* → returns original plaintext */ }
+
+module.exports = { encrypt, decrypt };
+```
+
+- **Signature:** exactly 2 params each — `encrypt(text, key)` / `decrypt(text, key)`. The value to protect + the secret key.
+- **Key:** currently **`"azeumark"`** — a placeholder that **will be changed later**. Read it from `AES_SECRET_KEY` in `.env` (see §9) so it can be rotated without touching code; fall back to `"azeumark"` only in dev.
+- **Usage pattern:** callers pass the key in explicitly, e.g. `AESCrypt.encrypt(value, process.env.AES_SECRET_KEY)` and `AESCrypt.decrypt(cipher, process.env.AES_SECRET_KEY)`.
+- **Use for:** reversible sensitive fields the system needs to recover in plaintext. **Never use it for passwords** — those remain bcrypt-hashed (`select:false`).
+- **Library:** `crypto-js` matches this `(text, key)` shape cleanly (`CryptoJS.AES.encrypt(text, key).toString()` / `CryptoJS.AES.decrypt(cipher, key).toString(CryptoJS.enc.Utf8)`); Node's native `crypto` is also fine if you prefer zero extra deps.
 
 ---
 
@@ -425,7 +444,7 @@ All emits funnel through `notify.service.js` so business logic never touches soc
 
 ## 8. IMPLEMENTATION PHASES (server) — log each in `/AzCuts/implemented.md`
 
-- **Phase 0 — Project skeleton:** init `/server`, install deps (express, mongoose, jsonwebtoken, bcryptjs, dotenv, cors, helmet, morgan, multer, express-validator, socket.io, dayjs/luxon), scaffold folders, `app.js`+`server.js`, `config/db.js`, `bootstrap.js`, health route. **DoD:** `nodemon server.js` connects to `azeubarbersalondb` and `/api/health` returns 200.
+- **Phase 0 — Project skeleton:** init `/server`, install deps (express, mongoose, jsonwebtoken, bcryptjs, dotenv, cors, helmet, morgan, multer, express-validator, socket.io, dayjs/luxon, crypto-js), scaffold folders (incl. `utils/AESCrypt.js` — see §6.1), `app.js`+`server.js`, `config/db.js`, `bootstrap.js`, health route. **DoD:** `nodemon server.js` connects to `azeubarbersalondb` and `/api/health` returns 200.
 - **Phase 1 — Models & Auth:** all Mongoose models, JWT register/login/refresh/logout/me, `auth` + `roles` middleware, refresh-token store. **DoD:** admin (from seed) can log in; customer can register+login.
 - **Phase 2 — Inventory:** services + extras CRUD + image upload (Multer) + public GET for landing/booking. **DoD:** admin manages inventory; public can fetch active services.
 - **Phase 3 — Scheduling & Booking core:** `scheduling.service` (slots), `pricing.service`, `appointment.service` create + receiptNo, `POST /appointments`, `GET /slots`, `GET /mine`, receipt JSON. **DoD:** customer completes a full booking; totals correct; receipt data returned.
@@ -449,6 +468,7 @@ ACCESS_TOKEN_TTL=15m
 REFRESH_TOKEN_TTL=7d
 CLIENT_ORIGIN=http://localhost:3000
 DEFAULT_TZ=Asia/Manila
+AES_SECRET_KEY=azeumark          # symmetric key for utils/AESCrypt.js (encrypt/decrypt) — placeholder, change later
 ```
 
 ## 10. ADMIN SEED (Compass import)
