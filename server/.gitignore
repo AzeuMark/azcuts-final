@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Environment (never commit real secrets)
+.env
+
+# Uploaded files (keep the folder, ignore its contents)
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db

@@ -5,7 +5,7 @@
 > **Head Developer:** Uelmark G. Valdehueza
 > **Assistant Developers:** JM Nikko O. Gallardo · Lara Angel A. Habagat
 > **Database:** MongoDB @ `mongodb://localhost:27017` · DB name: `azeubarbersalondb` (auto-created on first write)
-> **Run command:** `node server.js` or `nodemon server.js`
+> **Run command:** `npm run dev` (dev — runs `nodemon server.js`). Production: `npm start` (runs `node server.js`).
 > **Companion document:** `CLIENT_PLAN.md` (frontend). Both plans share ONE data model and ONE API contract — read them together.
 
 ---
@@ -14,18 +14,21 @@
 
 | Area | Decision |
 |---|---|
-| **Auth** | JWT — short-lived **access token** + long-lived **refresh token** |
+| **Auth** | JWT — short-lived **access token** (kept in client memory) + long-lived **refresh token** stored in a **secure `httpOnly` cookie**; refresh tokens are hashed + rotated server-side |
 | **Roles** | `user` (customer), `staff`, `admin` |
 | **Staff accounts** | Created by **Admin only** (no staff self-registration) |
-| **Scheduling** | **Fixed time slots**; every service has a `durationMinutes`; store has open/close hours |
+| **Scheduling** | **Fixed time slots**; booked block = service `durationMinutes` **+ the duration of every selected extra**; store has open/close hours |
 | **Image storage** | **Local disk** via Multer → `/server/uploads/` served statically |
-| **Ratings** | Customer is **prompted after "Done"** AND can **edit later** from Booking History |
+| **Ratings** | Customer is **prompted after "Done"** AND can **edit later** from Booking History. Staff `avgRating`/`ratingCount` are **recomputed from the appointments themselves** — editing a rating never inflates the count |
 | **Discounts** | **Per-booking manual %** — admin sets the % on an individual appointment |
 | **Real-time** | **Socket.io** — live push of appointment status + dashboard counters |
 | **Least-loaded staff** | Fewest **active** appointments (status `pending` + `in_service`) |
 | **Theme** | Frontend concern — clean/modern with **light/dark toggle** (see client plan) |
 | **Timezone** | Default **Asia/Manila**; configurable in Admin > Settings |
 | **Payment** | `cash` implemented. `gcash` = field exists but **disabled** (never processed) |
+| **Staff reject** | Rejecting **unassigns** the appointment and returns it to the **pending pool**, then re-runs auto-assign to the next least-loaded staff (rejecting staff excluded); it is only **cancelled** if no eligible staff remain |
+| **Client build tool** | Client is scaffolded with **Vite** (React); dev server pinned to port **3000** to match `CLIENT_ORIGIN`; client env vars use the `VITE_` prefix (read via `import.meta.env`) |
+| **Package manager** | **pnpm** for all dependency installs (`pnpm install`, `pnpm add`, `pnpm add -D`) — faster + disk-efficient. Run scripts with **npm** (`npm run dev`). Install via pnpm only (**never `npm install`**) → single `pnpm-lock.yaml`, no competing `package-lock.json` |
 
 ---
 
@@ -63,9 +66,10 @@ The **server** is a stateless REST API (plus a Socket.io channel) that owns ALL 
 ```
 Rules enforced in `appointment.service.js`:
 - **pending → accepted**: only `staff` (self) or `admin`. Sets `assignedStaff`, `acceptedAt`.
-- **accepted → in_service**: staff/admin. Sets `startedAt`.
-- **in_service → done**: staff/admin. Sets `finishedAt`, freezes final price, unlocks the rating prompt for the customer.
+- **accepted → in_service**: staff/admin. Sets `startedAt`; the assigned staff's `users.status` is auto-set to `in_service` (system-managed — distinct from the manual shift toggle).
+- **in_service → done**: staff/admin. Sets `finishedAt`, freezes final price, increments the staff's `totalServed`, reverts the staff's `users.status` back to `active`, and unlocks the rating prompt for the customer.
 - **pending/accepted → cancelled**: user (own booking), staff (assigned), or admin. **Requires** `cancelReason` + records `cancelledBy` (userId + role). Sets `cancelledAt`.
+- **Staff reject (accepted/pending → pending pool)**: an assigned staff may **reject** their routed appointment. This does **not** cancel it — it clears `assignedStaff`, keeps `status = pending`, appends a `rejected` note to `statusHistory[]`, and re-runs the least-loaded auto-assign (§2.3) to route it to the next-best staff (the rejecting staff is excluded from immediate re-assignment). Only if **no eligible staff remain** does it fall through to `cancelled` (reason: "No staff available").
 - **done / cancelled**: TERMINAL — any transition attempt returns `409 Conflict`.
 - Every transition emits a Socket.io event (see §7) and appends to the appointment's `statusHistory[]` audit array.
 
@@ -73,7 +77,7 @@ A single guard function validates transitions from a constant map:
 ```js
 const ALLOWED = {
   pending:    ['accepted', 'cancelled'],
-  accepted:   ['in_service', 'cancelled'],
+  accepted:   ['in_service', 'cancelled', 'pending'], // 'pending' = staff reject → back to pool (see reject rule above)
   in_service: ['done'],
   done:       [],
   cancelled:  [],
@@ -81,13 +85,16 @@ const ALLOWED = {
 ```
 
 ### 2.2 Slot Availability Algorithm
-Inputs: `serviceId` (→ `durationMinutes`), `date`, optional `staffId`.
+Inputs: `serviceId` (→ `durationMinutes`), `date`, optional `extras[]` (→ each extra's `durationMinutes`), optional `staffId`.
 1. Load store hours for that weekday from `Settings.storeHours` (e.g. 09:00–20:00) + `slotStepMinutes` (e.g. 30).
-2. Generate candidate start times: `open, open+step, … until (close - duration)`.
-3. For each candidate `[start, start+duration)`:
+2. Compute **`totalDuration = service.durationMinutes + Σ selected extra.durationMinutes`**. This is the real length of the booked block; everything below uses it (never the bare service duration).
+3. Generate candidate start times: `open, open+step, … until (close - totalDuration)`.
+4. For each candidate `[start, start+totalDuration)`:
    - If `staffId` given → mark **available** only if that staff has NO appointment (status ∈ pending/accepted/in_service) overlapping the interval.
    - If no `staffId` (auto) → mark **available** if **at least one** active staff is free in that interval.
-4. Return the list of slots with `{ start, end, availableStaffCount }`. Past slots (already elapsed today, in Asia/Manila) are excluded.
+5. Return the list of slots with `{ start, end, availableStaffCount }`. Past slots (already elapsed today, in Asia/Manila) are excluded.
+
+> **Why extras matter here:** extras extend `totalDuration`, so the client passes the chosen `extras[]` to `GET /appointments/slots` (the wizard picks extras in step 2, before scheduling in step 3). This keeps availability aligned with the true block length and preserves the "no double-booking" guarantee — a booking with extras can't silently overrun into the next slot.
 
 Overlap test: `existing.start < candidate.end && existing.end > candidate.start`.
 
@@ -98,6 +105,8 @@ Triggered when the customer chooses **Auto** OR books without picking staff.
 3. Otherwise compute each free staff's **load = count of appointments where status ∈ {pending, in_service}** (per the locked definition). Pick the **minimum load**; break ties by **lowest avgRating count / earliest createdAt** (deterministic). Assign them, set `status = pending` (staff still must accept) — the appointment is routed but not yet confirmed.
 
 > Note: auto-assign **routes** the booking to the best staff; the staff still explicitly **accepts** on their dashboard, keeping a human in the loop.
+
+> **Re-routing on reject:** when a staff rejects (§2.1), this same algorithm runs again with the rejecting staff excluded from the free set, routing to the next least-loaded staff. If the free set becomes empty, the appointment is cancelled with reason "No staff available".
 
 ### 2.4 Pricing Engine (server-authoritative)
 ```
@@ -186,7 +195,7 @@ Index: `{ category: 1, isActive: 1 }`.
 | `extras` | [ObjectId → extras] | Selected add-ons |
 | `priceSnapshot` | Object | `{ base, extras:[{id,name,price}], subtotal, discountPercent, discountAmount, taxRate, taxAmount, total, currency }` frozen at booking |
 | `scheduledStart` | Date | Slot start (UTC in DB, rendered Asia/Manila) |
-| `scheduledEnd` | Date | Slot end (= start + total duration) |
+| `scheduledEnd` | Date | Slot end (= `scheduledStart` + `totalDuration`, where `totalDuration = service.durationMinutes + Σ selected extras.durationMinutes` — see §2.2) |
 | `status` | Enum `pending\|accepted\|in_service\|done\|cancelled` | State machine (§2.1) |
 | `statusHistory` | [ `{ status, at, byUser, byRole, note }` ] | Full audit trail |
 | `paymentMethod` | Enum `cash\|gcash`, default `cash` | gcash stored but disabled |
@@ -243,7 +252,7 @@ settings = 1 singleton doc
 /AzCuts
 └── /server
     ├── server.js                      # Entry point. Loads env, connects DB, mounts app, starts HTTP + Socket.io, prints ready log.
-    ├── app.js                         # Builds the Express app: global middleware (cors, json, helmet, morgan), static /uploads, route mounting, error handler. Exported for testing.
+    ├── app.js                         # Builds the Express app: global middleware (cors w/ credentials, json, cookie-parser, helmet, morgan), static /uploads, route mounting, error handler. Exported for testing.
     ├── package.json                   # Deps + scripts ("start":"node server.js", "dev":"nodemon server.js").
     ├── .env                           # PORT, MONGO_URI, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, token TTLs, CLIENT_ORIGIN. (gitignored)
     ├── .env.example                   # Template of the above with dummy values for teammates.
@@ -278,7 +287,7 @@ settings = 1 singleton doc
     │   └── settings.validator.js      # mode/timezone/hours/nicknames rules.
     │
     ├── /controllers
-    │   ├── auth.controller.js         # register(user), login, refresh, logout, me.
+    │   ├── auth.controller.js         # register(user), login (sets refresh cookie), refresh (reads cookie), logout (clears cookie), me.
     │   ├── user.controller.js         # getProfile, updateProfile, changePassword, avatar upload.
     │   ├── staff.controller.js        # staff dashboard feed, accept/reject, my history + stats, set on/off shift.
     │   ├── admin.controller.js        # dashboard summary, list/create/edit/delete users+staff, per-booking discount, both history views.
@@ -293,7 +302,7 @@ settings = 1 singleton doc
     │   ├── scheduling.service.js      # slot generation (§2.2) + overlap checks.
     │   ├── assignment.service.js      # least-loaded auto-assign (§2.3).
     │   ├── pricing.service.js         # pricing engine (§2.4) + snapshot builder.
-    │   ├── rating.service.js          # apply/update rating → recompute staff avgRating/ratingCount.
+    │   ├── rating.service.js          # apply/update rating → RECOMPUTE staff avgRating/ratingCount from that staff's rated appointments (source of truth = each appointment's rating); editing a rating updates the avg without inflating the count.
     │   ├── analytics.service.js       # Mongo aggregation pipelines (sales, counts, charts, top services/staff).
     │   ├── receipt.service.js         # canonical receipt JSON builder.
     │   └── notify.service.js          # thin wrapper over Socket.io emits (single place for all events).
@@ -317,8 +326,8 @@ settings = 1 singleton doc
     │   ├── ApiError.js                # Typed error class (statusCode + message).
     │   ├── asyncHandler.js            # try/catch wrapper for async controllers.
     │   ├── response.js                # Uniform success/error JSON shapers.
-    │   ├── receiptNo.js               # Daily-counter receipt number generator.
-    │   ├── datetime.js                # Asia/Manila-aware helpers (day boundaries, week/month ranges) using Luxon/dayjs.
+    │   ├── receiptNo.js               # Daily-counter receipt number generator — atomic findOneAndUpdate $inc on a per-day counter doc (own `counters` collection) so concurrent bookings never collide.
+    │   ├── datetime.js                # Asia/Manila-aware helpers (day boundaries, week/month ranges) using dayjs (utc + timezone plugins).
     │   ├── AESCrypt.js                # AES symmetric crypto helper. Exports encrypt(text, key) + decrypt(text, key) (2 params each). Key defaults to AES_SECRET_KEY (currently "azeumark", placeholder). Reversible encryption for sensitive fields the system must read back — NOT for passwords (those stay bcrypt). See §6.1.
     │   └── logger.js                  # Console/file logger.
     │
@@ -343,9 +352,9 @@ settings = 1 singleton doc
 | Method | Path | Body / Params | Access | Purpose |
 |---|---|---|---|---|
 | POST | `/auth/register` | fullName,email,phone,password | public | Customer self-register (role forced to `user`) |
-| POST | `/auth/login` | email,password | public (mode-gated) | Returns access+refresh + user profile |
-| POST | `/auth/refresh` | refreshToken | public | Rotate access token |
-| POST | `/auth/logout` | refreshToken | auth | Revoke refresh token |
+| POST | `/auth/login` | email,password | public (mode-gated) | Returns **access token + user profile** in the body; sets the **refresh token as an `httpOnly` cookie** |
+| POST | `/auth/refresh` | — (refresh token read from `httpOnly` cookie) | public | Rotate access token; issues a fresh refresh cookie |
+| POST | `/auth/logout` | — (cookie) | auth | Revoke the stored refresh token + clear the cookie |
 | GET | `/auth/me` | — | auth | Current user profile |
 
 ### Profile / Settings (self)
@@ -354,18 +363,18 @@ settings = 1 singleton doc
 | POST | `/users/avatar` | file | auth | Upload avatar |
 
 ### Booking (customer)
-| GET | `/appointments/slots` | serviceId,date,staffId? | auth(user) | Available slots (§2.2) |
+| GET | `/appointments/slots` | serviceId,date,extras[]?,staffId? | auth(user) | Available slots — availability accounts for the extras' duration (§2.2) |
 | POST | `/appointments` | serviceId,extras[],scheduledStart,staffId?|auto,paymentMethod | auth(user) | Create booking (server computes price, assigns/routes staff, generates receiptNo) |
 | GET | `/appointments/mine` | ?status,page | auth(user) | Booking history (table) |
 | GET | `/appointments/:id` | — | auth(owner/staff/admin) | Single appointment |
 | GET | `/appointments/:id/receipt` | — | auth(owner/staff/admin) | Canonical receipt JSON (client renders PNG) |
 | PATCH | `/appointments/:id/cancel` | cancelReason | auth(owner/assigned staff/admin) | Cancel (blocked if done/accepted-by-rule) |
-| POST | `/appointments/:id/rate` | stars,comment | auth(owner, status done) | Add/edit rating (§ rating flow) |
+| POST | `/appointments/:id/rate` | stars,comment | auth(owner, status done) | Add **or edit** rating → recompute staff avg from appointments (no count inflation on edit) |
 
 ### Staff
 | GET | `/staff/appointments` | ?scope=incoming\|mine | auth(staff) | Pending pool + own accepted queue |
 | PATCH | `/staff/appointments/:id/accept` | — | auth(staff) | pending→accepted (self) |
-| PATCH | `/staff/appointments/:id/reject` | reason | auth(staff) | Decline (returns to pool / cancel per policy) |
+| PATCH | `/staff/appointments/:id/reject` | reason | auth(staff) | Decline → unassign + return to pending pool, re-route to next least-loaded staff (cancel only if none remain). See §2.1 |
 | PATCH | `/appointments/:id/status` | status(in_service\|done) | auth(assigned staff/admin) | Advance state machine |
 | GET | `/staff/history` | ?filter | auth(staff) | Served history + totalServed + avgRating + ratings list |
 | PATCH | `/staff/shift` | status(active\|inactive) | auth(staff) | On/off shift toggle |
@@ -399,8 +408,9 @@ settings = 1 singleton doc
 
 ## 6. SECURITY & VALIDATION RULES
 - Passwords hashed with **bcryptjs** (cost 10). Never returned (`select:false`).
-- **JWT**: access token TTL ~15m, refresh ~7d, stored/rotated in `refreshtokens`; refresh rotation + reuse detection.
-- **helmet**, **cors** (restricted to `CLIENT_ORIGIN`), **express-rate-limit** on `/auth/*`.
+- **JWT**: access token TTL ~15m (returned in the response body, kept in client memory), refresh ~7d stored/rotated (hashed) in `refreshtokens`; refresh rotation + reuse detection.
+- **Refresh token transport**: delivered to the browser as a **secure `httpOnly` cookie** (`SameSite=Lax` in dev — client `:3000` and server `:5000` share the same site `localhost`, so the cookie is sent; `SameSite=None; Secure` in production across domains). `httpOnly` keeps the token out of reach of JS/XSS. Requires **`cookie-parser`** on the server, **`credentials: true`** CORS, and the client sending `withCredentials: true`.
+- **helmet**, **cors** (restricted to `CLIENT_ORIGIN`, `credentials: true`), **express-rate-limit** on `/auth/*`.
 - **express-validator** on every write route; central 422 formatter.
 - File uploads: Multer restricts to image mime types + size cap; randomized filenames.
 - Authorization: every non-public route runs `auth` → `systemMode` → `requireRole` (as needed) → controller.
@@ -444,7 +454,7 @@ All emits funnel through `notify.service.js` so business logic never touches soc
 
 ## 8. IMPLEMENTATION PHASES (server) — log each in `/AzCuts/implemented.md`
 
-- **Phase 0 — Project skeleton:** init `/server`, install deps (express, mongoose, jsonwebtoken, bcryptjs, dotenv, cors, helmet, morgan, multer, express-validator, socket.io, dayjs/luxon, crypto-js), scaffold folders (incl. `utils/AESCrypt.js` — see §6.1), `app.js`+`server.js`, `config/db.js`, `bootstrap.js`, health route. **DoD:** `nodemon server.js` connects to `azeubarbersalondb` and `/api/health` returns 200.
+- **Phase 0 — Project skeleton:** init `/server` (`pnpm init`), install deps via `pnpm add` (express, mongoose, jsonwebtoken, bcryptjs, dotenv, cors, helmet, morgan, multer, express-validator, socket.io, **cookie-parser**, **dayjs** (with `utc` + `timezone` plugins), crypto-js) + dev dep `pnpm add -D nodemon`, scaffold folders (incl. `utils/AESCrypt.js` — see §6.1), `app.js`+`server.js`, `config/db.js`, `bootstrap.js`, health route. **DoD:** `npm run dev` (nodemon) connects to `azeubarbersalondb` and `/api/health` returns 200.
 - **Phase 1 — Models & Auth:** all Mongoose models, JWT register/login/refresh/logout/me, `auth` + `roles` middleware, refresh-token store. **DoD:** admin (from seed) can log in; customer can register+login.
 - **Phase 2 — Inventory:** services + extras CRUD + image upload (Multer) + public GET for landing/booking. **DoD:** admin manages inventory; public can fetch active services.
 - **Phase 3 — Scheduling & Booking core:** `scheduling.service` (slots), `pricing.service`, `appointment.service` create + receiptNo, `POST /appointments`, `GET /slots`, `GET /mine`, receipt JSON. **DoD:** customer completes a full booking; totals correct; receipt data returned.

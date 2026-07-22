@@ -3,7 +3,7 @@
 > **Project:** AzCuts — Barber Shop & Salon Management System
 > **Stack:** MERN (this document = the **React** client)
 > **Head Developer:** Uelmark G. Valdehueza · **Assistants:** JM Nikko O. Gallardo · Lara Angel A. Habagat
-> **Run command:** `npm start` (Create React App / Vite dev server on `http://localhost:3000`)
+> **Run command:** `npm run dev` (**Vite** dev server pinned to `http://localhost:3000`)
 > **Talks to:** the API in `SERVER_PLAN.md` at `http://localhost:5000/api` + Socket.io. **Read both plans together — they share ONE API contract and data model.**
 
 ---
@@ -11,10 +11,10 @@
 ## 0. LOCKED DECISIONS (client-relevant)
 | Area | Decision |
 |---|---|
-| **Auth** | JWT access+refresh; access token in memory + refresh handled via `/auth/refresh`; auto-attach via Axios interceptor |
+| **Auth** | JWT; **access token in memory**, **refresh token in a secure `httpOnly` cookie** (server-set, never touched by JS); silent refresh via `/auth/refresh` on app load + on 401; Axios interceptor attaches the Bearer token and sends `withCredentials: true` |
 | **Roles → routing** | `user`, `staff`, `admin` each get their own dashboard shell + side panel; protected + role-gated routes |
 | **Booking** | Multi-step wizard: Service → Extras → Schedule (slot + staff/auto) → Payment → Confirm → Receipt |
-| **Scheduling UI** | Fixed **time-slot picker** (server returns available slots) |
+| **Scheduling UI** | Fixed **time-slot picker**; the extras chosen in step 2 are sent to `/appointments/slots` so availability reflects the true block length (server returns available slots) |
 | **Images** | Served from server `/uploads/*`; template images used until real ones uploaded |
 | **Branding / Logo** | App logo currently at `/AzCuts/templates/website-logo.png`. **To be moved into the client at `/client/public/assets/website-logo.png` during Phase 0** (referenced in code as `/assets/website-logo.png`). Used by `PublicNavbar`, `Topbar`, Landing hero, `ReceiptCard`, and the `index.html` favicon. Do not move yet — defer to Phase 0 scaffolding |
 | **Ratings** | Modal prompt after a booking turns **Done** + editable star control in Booking History |
@@ -22,6 +22,8 @@
 | **Real-time** | Socket.io client → live dashboard + status updates, toast notifications |
 | **Theme** | Clean, aesthetic, modern design system + **Light/Dark theme toggle** (persisted) |
 | **Styling** | **Tailwind CSS** (`darkMode: 'class'`) — the committed styling framework for the whole client |
+| **Build tool** | **Vite** (React + JSX). Dev server pinned to port **3000**; env vars use the `VITE_` prefix, read via `import.meta.env`. Scripts: `npm run dev` / `npm run build` / `npm run preview` |
+| **Package manager** | **pnpm** for all dependency installs (`pnpm install`, `pnpm add`, `pnpm add -D`) — faster + disk-efficient. Run scripts with **npm** (`npm run dev`). Install via pnpm only (**never `npm install`**) → single `pnpm-lock.yaml`, no competing `package-lock.json` |
 | **Timezone** | Render all times in `Asia/Manila` (from `/settings/public`) |
 | **Payments** | Cash selectable; **GCash shown but disabled** (greyed, "coming soon") |
 
@@ -49,8 +51,8 @@
 Install Tailwind + peers, then generate config:
 ```bash
 # from /AzCuts/client
-npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p          # creates tailwind.config.js + postcss.config.js
+pnpm add -D tailwindcss@3 postcss autoprefixer   # v3 pinned on purpose (v4 dropped `init -p` + the JS config this plan uses)
+pnpm exec tailwindcss init -p    # creates tailwind.config.js + postcss.config.js
 ```
 Configure `tailwind.config.js`:
 ```js
@@ -81,9 +83,8 @@ Add the Tailwind directives at the top of `src/styles/globals.css`:
 @tailwind components;
 @tailwind utilities;
 ```
-Then import `./styles/globals.css` once in `src/index.js`.
-- **Vite users:** `postcss.config.js` is auto-picked up — no extra step.
-- **CRA users:** the generated `postcss.config.js` works out of the box; just keep the import in `index.js`.
+Then import `./styles/globals.css` once in `src/main.jsx` (Vite's entry file).
+- **Vite** auto-picks up `postcss.config.js` — no extra wiring. Pin the dev port to **3000** in `vite.config.js` (`server: { port: 3000 }`) so it matches the server's `CLIENT_ORIGIN`.
 - Semantic surface/text/border colors that must flip per theme are expressed with Tailwind `dark:` variants (e.g. `bg-white dark:bg-[#171A21] text-gray-900 dark:text-gray-100`). Optionally back them with CSS variables in `theme.css` for a single source of truth.
 
 ---
@@ -122,7 +123,7 @@ PROTECTED (role-gated via <ProtectedRoute role=...>)
 Auth guard reads role from the decoded user; wrong role → redirect to that role's home. Offline/maintenance → `/maintenance` screen (except allowed roles).
 
 ### 2.2 State & data layer
-- **Auth context** (`AuthContext`): current user, tokens, login/logout, refresh. Access token in memory; silent refresh on 401 via Axios interceptor.
+- **Auth context** (`AuthContext`): current user + access token (in memory), login/logout/refresh. The **refresh token lives only in a server-set `httpOnly` cookie** (invisible to JS). On app load and on any 401, the Axios interceptor calls `/auth/refresh` (with `withCredentials`) to silently mint a new access token from that cookie.
 - **Theme context** (`ThemeContext`): light/dark toggle + persistence.
 - **Socket context** (`SocketContext`): single Socket.io connection (auth via token), exposes subscribe helpers.
 - **Server data**: **React Query (TanStack Query)** for fetching/caching (`useServices`, `useMyAppointments`, `useSlots`, `useAdminUsers`, `useAnalytics`, …). Socket events invalidate/patch the relevant queries for live updates.
@@ -136,27 +137,28 @@ Auth guard reads role from the decoded user; wrong role → redirect to that rol
 ```
 /AzCuts
 └── /client
-    ├── package.json                 # Deps + scripts ("start", "build"). Deps: react-router-dom, axios, @tanstack/react-query, socket.io-client, react-hook-form, recharts, html2canvas, dayjs, react-hot-toast, lucide-react (icons). devDeps: tailwindcss, postcss, autoprefixer (see §1.3).
+    ├── package.json                 # Deps + scripts ("dev", "build", "preview" — Vite). Deps: react, react-dom, react-router-dom, axios, @tanstack/react-query, socket.io-client, react-hook-form, recharts, html2canvas, dayjs, react-hot-toast, lucide-react (icons). devDeps: vite, @vitejs/plugin-react, tailwindcss, postcss, autoprefixer (see §1.3).
+    ├── vite.config.js               # Vite + @vitejs/plugin-react; `server.port` pinned to 3000 (matches server CLIENT_ORIGIN).
     ├── tailwind.config.js           # Tailwind config: darkMode:'class', content globs, brand/semantic color tokens (§1.3).
-    ├── postcss.config.js            # PostCSS pipeline (tailwindcss + autoprefixer) generated by `npx tailwindcss init -p`.
-    ├── .env                         # REACT_APP_API_URL=http://localhost:5000/api, REACT_APP_SOCKET_URL=http://localhost:5000
+    ├── postcss.config.js            # PostCSS pipeline (tailwindcss + autoprefixer) generated by `pnpm exec tailwindcss init -p`.
+    ├── .env                         # VITE_API_URL=http://localhost:5000/api, VITE_SOCKET_URL=http://localhost:5000
     ├── .env.example                 # Template for teammates.
+    ├── index.html                   # Vite's root HTML entry (lives at the CLIENT ROOT, not in /public). Sets the initial `dark` class on <html> before paint (no-flash inline script reading localStorage `az-theme`). References /assets/website-logo.png as favicon. Loads /src/main.jsx.
     ├── /public
-    │   ├── index.html               # Root HTML; sets initial [data-theme] before paint (no-flash script). References /assets/website-logo.png as favicon.
     │   └── /assets
     │       ├── website-logo.png     # App/brand logo. SOURCE: /AzCuts/templates/website-logo.png → MOVE here in Phase 0. Referenced as /assets/website-logo.png by PublicNavbar, Topbar, Landing hero, ReceiptCard.
     │       └── /templates           # Template haircut/service images used until real ones uploaded.
     └── /src
-        ├── index.js                 # React root; wraps App in QueryClient, Router, Auth/Theme/Socket providers.
+        ├── main.jsx                 # React root (Vite entry); imports ./styles/globals.css; wraps App in QueryClient, Router, Auth/Theme/Socket providers.
         ├── App.jsx                   # Route table (§2.1) + layout selection per role.
         │
         ├── /config
-        │   ├── axios.js             # Axios instance + interceptors: attach Bearer, auto-refresh on 401, base URL.
+        │   ├── axios.js             # Axios instance (baseURL from import.meta.env.VITE_API_URL, withCredentials:true) + interceptors: attach Bearer access token, auto-call /auth/refresh on 401 (refresh token rides the httpOnly cookie), retry once.
         │   └── queryClient.js       # React Query client config (staleTime, retry).
         │
         ├── /context
         │   ├── AuthContext.jsx      # user/tokens, login(), logout(), register(), refresh(), role helpers.
-        │   ├── ThemeContext.jsx     # theme state, toggleTheme(), persist to localStorage, apply [data-theme].
+        │   ├── ThemeContext.jsx     # theme state, toggleTheme(), persist to localStorage (`az-theme`), toggle the `dark` class on <html> (matches Tailwind darkMode:'class').
         │   └── SocketContext.jsx    # connect socket with token, expose on()/off() + auto-reconnect.
         │
         ├── /api  (thin API wrappers — one per domain, mirrors server routes)
@@ -174,7 +176,7 @@ Auth guard reads role from the decoded user; wrong role → redirect to that rol
         │   ├── useTheme.js          # consume ThemeContext.
         │   ├── useSocketEvent.js    # subscribe to a socket event with cleanup.
         │   ├── useServices.js       # React Query: active services/extras.
-        │   ├── useSlots.js          # React Query: available slots for service+date+staff.
+        │   ├── useSlots.js          # React Query: available slots for service + date + selected extras (+ optional staff); extras change slot length (§2.2 server).
         │   ├── useMyAppointments.js # customer history.
         │   ├── useBooking.js        # wizard reducer (step/service/extras/slot/staff/payment).
         │   ├── useAdminUsers.js     # paginated users (20/pp) + search.
@@ -229,7 +231,7 @@ Auth guard reads role from the decoded user; wrong role → redirect to that rol
         │   └── constants.js         # Status enums, role enums, payment methods (mirrors server).
         │
         └── /styles
-            ├── globals.css          # Tailwind directives (@tailwind base/components/utilities) + base/reset + typography. Imported once in index.js.
+            ├── globals.css          # Tailwind directives (@tailwind base/components/utilities) + base/reset + typography. Imported once in main.jsx.
             └── theme.css            # Optional CSS variables mirroring the §1.1 tokens (single source of truth backing the Tailwind color tokens).
 ```
 
@@ -251,7 +253,7 @@ Auth guard reads role from the decoded user; wrong role → redirect to that rol
 Five steps with a progress indicator, back/next, live running total:
 1. **Service** — grid of `ServiceCard`s (image, name, price, **Select**). Filter by category.
 2. **Extras** — `ExtraChip`s (bleaching, treatments…); multi-select, can be none; updates total + duration.
-3. **Schedule** — `SlotPicker` (date → available time slots from `/appointments/slots`) + `StaffPicker` (specific staff or **Auto = least-loaded**; shows "may be pending if none available").
+3. **Schedule** — `SlotPicker` (date → available time slots from `/appointments/slots`, which already factors in the extras chosen in step 2) + `StaffPicker` (specific staff or **Auto = least-loaded**; shows "may be pending if none available").
 4. **Payment** — Cash (selectable) · GCash (disabled/"coming soon").
 5. **Confirm** — summary card (service, extras, staff/auto, slot, subtotal, discount if any, total) → **Book** → server creates appointment → **ReceiptCard** shown with **Download PNG** button.
 Live updates: if auto-assign couldn't place staff, the confirmation clearly states "Pending — awaiting staff acceptance".
@@ -318,7 +320,7 @@ Live updates: if auto-assign couldn't place staff, the confirmation clearly stat
 ## 6. IMPLEMENTATION PHASES (client) — log each in `/AzCuts/implemented.md`
 Kept **in lockstep with the server phases** so features are testable end-to-end.
 
-- **Phase 0 — Skeleton & design system:** CRA/Vite init, install deps, **install + configure Tailwind CSS** (`npm i -D tailwindcss postcss autoprefixer` → `npx tailwindcss init -p` → set `darkMode:'class'`, content globs, color tokens, add `@tailwind` directives to `globals.css` — see §1.3), Router, providers, **light/dark toggle** (`dark` class on `<html>`), `/ui` base components (Tailwind-styled), DashboardShell/Sidebar/Topbar, Axios instance, **move `/AzCuts/templates/website-logo.png` → `/client/public/assets/website-logo.png`** and wire it into the navbar/topbar/favicon. **DoD:** app runs, Tailwind classes apply, theme toggle flips light/dark, empty routes render, logo displays.
+- **Phase 0 — Skeleton & design system:** **Vite init** (`pnpm create vite@latest client --template react`), pin dev port to 3000 in `vite.config.js`, install deps (`pnpm install`), **install + configure Tailwind CSS** (`pnpm add -D tailwindcss@3 postcss autoprefixer` → `pnpm exec tailwindcss init -p` → set `darkMode:'class'`, content globs, color tokens, add `@tailwind` directives to `globals.css` — see §1.3), Router, providers, **light/dark toggle** (`dark` class on `<html>`), `/ui` base components (Tailwind-styled), DashboardShell/Sidebar/Topbar, Axios instance (`withCredentials: true`), **move `/AzCuts/templates/website-logo.png` → `/client/public/assets/website-logo.png`** and wire it into the navbar/topbar/favicon. **DoD:** `npm run dev` serves on :3000, Tailwind classes apply, theme toggle flips light/dark, empty routes render, logo displays.
 - **Phase 1 — Auth & guards:** Login/Register, AuthContext, protected + role-gated routes, silent refresh, redirect-by-role. **DoD:** admin (seed) + new customer can log in and land on the right portal.
 - **Phase 2 — Landing page:** hero, services gallery (from `/settings/public`), about, contact, location — polished & responsive. **DoD:** landing looks modern in both themes and lists live services.
 - **Phase 3 — Inventory display + Booking data:** service/extra fetching, `ServiceCard`, `SlotPicker`, `StaffPicker`. **DoD:** wizard steps 1–3 render live data.
@@ -335,13 +337,14 @@ Kept **in lockstep with the server phases** so features are testable end-to-end.
 
 ## 7. CLIENT ENV (`.env`)
 ```
-REACT_APP_API_URL=http://localhost:5000/api
-REACT_APP_SOCKET_URL=http://localhost:5000
+VITE_API_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
 ```
+> Vite only exposes vars prefixed with `VITE_`, read via `import.meta.env.VITE_API_URL` (not `process.env`).
 
 ## 8. HOW CLIENT ↔ SERVER CONNECT (quick reference)
-- Every data call goes through `/src/api/*` → Axios instance (`REACT_APP_API_URL`) with Bearer token.
+- Every data call goes through `/src/api/*` → Axios instance (`import.meta.env.VITE_API_URL`, `withCredentials: true`) with the in-memory Bearer access token; the refresh token rides an `httpOnly` cookie.
 - Enums/status/roles/payment constants in `/utils/constants.js` **must match** the server enums in `SERVER_PLAN.md §3`.
 - Money & status come **computed from the server** — the client only displays them.
 - Times displayed in `Asia/Manila` using the timezone from `/settings/public`.
-- Real-time via Socket.io at `REACT_APP_SOCKET_URL` — event names match `SERVER_PLAN.md §7`.
+- Real-time via Socket.io at `VITE_SOCKET_URL` — event names match `SERVER_PLAN.md §7`.
