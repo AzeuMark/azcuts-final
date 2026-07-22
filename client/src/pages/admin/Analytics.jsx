@@ -103,7 +103,7 @@ export default function Analytics() {
         </ChartCard>
 
         <ChartCard title="Top services (revenue)">
-          <HorizontalBars data={s.topServices || []} dataKey="revenue" color="#4F46E5" moneyFmt={moneyFmt} />
+          <HorizontalBars data={s.topServices || []} dataKey="revenue" color="#E11D48" moneyFmt={moneyFmt} />
         </ChartCard>
 
         <ChartCard title="Status breakdown">
@@ -111,7 +111,7 @@ export default function Analytics() {
         </ChartCard>
 
         <ChartCard title="Revenue by staff" className="lg:col-span-2">
-          <HorizontalBars data={s.topStaff || []} dataKey="revenue" color="#14B8A6" moneyFmt={moneyFmt} />
+          <HorizontalBars data={s.topStaff || []} dataKey="revenue" color="#0EA5E9" moneyFmt={moneyFmt} />
         </ChartCard>
       </div>
     </div>

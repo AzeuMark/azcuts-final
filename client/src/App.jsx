@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import RealtimeBridge from './components/RealtimeBridge';
+import ThemeSync from './components/ThemeSync';
 import DashboardShell from './components/layout/DashboardShell';
 import Spinner from './components/ui/Spinner';
 
@@ -26,8 +27,7 @@ const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
 const AdminAnalytics = lazy(() => import('./pages/admin/Analytics'));
 const AdminUserManager = lazy(() => import('./pages/admin/UserManager'));
 const AdminInventory = lazy(() => import('./pages/admin/Inventory'));
-const AdminStaffHistory = lazy(() => import('./pages/admin/StaffHistory'));
-const AdminUserHistory = lazy(() => import('./pages/admin/UserHistory'));
+const AdminBookingHistory = lazy(() => import('./pages/admin/AppointmentHistory'));
 const AdminSystemSettings = lazy(() => import('./pages/admin/SystemSettings'));
 
 function PageFallback() {
@@ -43,6 +43,7 @@ export default function App() {
   return (
     <>
       <RealtimeBridge />
+      <ThemeSync />
       <Suspense fallback={<PageFallback />}>
         <Routes>
           {/* Public */}
@@ -95,8 +96,10 @@ export default function App() {
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="users" element={<AdminUserManager />} />
             <Route path="inventory" element={<AdminInventory />} />
-            <Route path="history/staff" element={<AdminStaffHistory />} />
-            <Route path="history/users" element={<AdminUserHistory />} />
+            <Route path="history" element={<AdminBookingHistory />} />
+            {/* Legacy split-history routes now fold into the unified page. */}
+            <Route path="history/staff" element={<Navigate to="/admin/history" replace />} />
+            <Route path="history/users" element={<Navigate to="/admin/history" replace />} />
             <Route path="settings" element={<AdminSystemSettings />} />
           </Route>
 

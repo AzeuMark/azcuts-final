@@ -23,8 +23,8 @@ Expressed as hex tokens (canonical, matching CLIENT_PLAN §1.1) and wired into T
 Muted text is for secondary metadata only; it still must clear 4.5:1 on its surface. When in doubt, move body color toward the ink end, never toward light gray for "elegance."
 
 ### Brand & accent
-- **Brand** `#4F46E5` (indigo), hover `#4338CA`. Primary buttons, active nav, focus rings, current selection. One accent, used for action and state, not decoration.
-- **Accent** `#14B8A6` (teal). Sparing secondary highlight (charts, subtle emphasis). Never competes with brand for "the primary action."
+- **Brand** `#E11D48` (red), hover `#BE123C`. Primary buttons, active nav, focus rings, current selection. One accent, used for action and state, not decoration.
+- **Accent** `#0EA5E9` (water blue). Sparing secondary highlight (charts, subtle emphasis). Never competes with brand for "the primary action."
 
 ### Semantic
 `success #16A34A` · `warning #D97706` · `danger #DC2626` · `info #2563EB`. Each renders as text/icon on a tinted background of its own hue (not gray) for banners and inline validation.

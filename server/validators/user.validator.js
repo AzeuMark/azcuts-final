@@ -62,10 +62,15 @@ const changePasswordRules = [
   body('newPassword').isString().isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
 ];
 
+const setThemeRules = [
+  body('theme').isIn(['light', 'dark']).withMessage('theme must be "light" or "dark"'),
+];
+
 module.exports = {
   adminCreateUserRules,
   adminUpdateUserRules,
   discountRules,
   updateProfileRules,
   changePasswordRules,
+  setThemeRules,
 };

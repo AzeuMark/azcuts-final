@@ -66,13 +66,13 @@ export function SalesLine({ data = [], moneyFmt }) {
         <XAxis dataKey="period" tick={{ fill: AXIS, fontSize: 12 }} tickLine={false} axisLine={{ stroke: GRID }} />
         <YAxis tick={{ fill: AXIS, fontSize: 12 }} tickLine={false} axisLine={false} width={48} />
         <Tooltip content={<ChartTooltip formatter={moneyFmt} />} />
-        <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#4F46E5" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+        <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#E11D48" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
       </LineChart>
     </ResponsiveContainer>
   );
 }
 
-export function HorizontalBars({ data = [], dataKey, color = '#4F46E5', moneyFmt }) {
+export function HorizontalBars({ data = [], dataKey, color = '#E11D48', moneyFmt }) {
   if (!data.length) return empty('Not enough data to chart yet.');
   return (
     <ResponsiveContainer width="100%" height={Math.max(200, data.length * 46)}>

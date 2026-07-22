@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Menu, Bell, LogOut, ChevronDown, Power } from 'lucide-react';
+import { Menu, Bell, LogOut, ChevronDown, Power, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import ThemeToggle from '../ui/ThemeToggle';
 import { useAuth } from '../../hooks/useAuth';
 import { useSocketEvent } from '../../hooks/useSocketEvent';
@@ -60,7 +60,7 @@ function initialsOf(name = '') {
   );
 }
 
-export default function Topbar({ onMenuClick }) {
+export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed = false }) {
   const { user, role, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -106,6 +106,22 @@ export default function Topbar({ onMenuClick }) {
         <Menu className="h-5 w-5" />
       </button>
 
+      {/* Desktop sidebar collapse/hide toggle */}
+      <button
+        type="button"
+        onClick={onToggleSidebar}
+        aria-label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+        aria-pressed={sidebarCollapsed}
+        title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+        className="hidden rounded-md p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink focus-ring lg:inline-flex"
+      >
+        {sidebarCollapsed ? (
+          <PanelLeftOpen className="h-5 w-5" />
+        ) : (
+          <PanelLeftClose className="h-5 w-5" />
+        )}
+      </button>
+
       <div className="flex-1" />
 
       {role === 'staff' && <ShiftToggle />}
@@ -149,17 +165,18 @@ export default function Topbar({ onMenuClick }) {
         {menuOpen && (
           <div
             role="menu"
-            className="absolute right-0 z-dropdown mt-2 w-56 origin-top-right animate-scale-in overflow-hidden rounded-xl border border-line bg-surface shadow-pop"
+            className="absolute right-0 z-dropdown mt-2 w-56 origin-top-right animate-scale-in rounded-xl border border-line bg-surface p-1.5 shadow-pop"
           >
-            <div className="border-b border-line px-4 py-3">
+            <div className="px-2.5 py-2">
               <p className="truncate text-sm font-medium text-ink">{user?.fullName || 'Account'}</p>
               <p className="truncate text-xs text-muted">{user?.email || ''}</p>
             </div>
+            <div className="my-1 h-px bg-line" />
             <button
               type="button"
               role="menuitem"
               onClick={handleLogout}
-              className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-ink transition-colors hover:bg-surface-2"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-ink transition-colors hover:bg-surface-2"
             >
               <LogOut className="h-4 w-4" />
               Sign out

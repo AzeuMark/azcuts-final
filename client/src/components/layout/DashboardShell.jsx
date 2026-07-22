@@ -4,15 +4,38 @@ import { X } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import Spinner from '../ui/Spinner';
+import cn from '../../utils/cn';
 import { useAuth } from '../../hooks/useAuth';
 import { useSettingsPublic } from '../../hooks/useSettingsPublic';
 
-// Shared shell for all three portals: fixed sidebar (lg+) or slide-in drawer
-// (mobile) + sticky topbar + routed content.
+const SIDEBAR_KEY = 'az-sidebar-collapsed';
+
+function readCollapsed() {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+// Shared shell for all three portals: collapsible fixed sidebar (lg+) or slide-in
+// drawer (mobile) + sticky topbar + routed content.
 export default function DashboardShell() {
   const { role } = useAuth();
   const { data: settings } = useSettingsPublic();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+
+  const toggleCollapsed = () =>
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_KEY, String(next));
+      } catch {
+        /* storage unavailable — non-fatal */
+      }
+      return next;
+    });
 
   // System-mode gate (SERVER_PLAN §2.5): maintenance blocks customers; offline
   // blocks customers + staff. Admins always pass. The API enforces this too.
@@ -24,8 +47,13 @@ export default function DashboardShell() {
 
   return (
     <div className="min-h-screen bg-app">
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-line lg:block">
+      {/* Desktop sidebar (collapsible / hideable) */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 w-64 border-r border-line transition-transform duration-200',
+          collapsed ? 'lg:-translate-x-full' : 'hidden lg:block lg:translate-x-0'
+        )}
+      >
         <Sidebar role={role} />
       </aside>
 
@@ -51,8 +79,12 @@ export default function DashboardShell() {
         </div>
       )}
 
-      <div className="lg:pl-64">
-        <Topbar onMenuClick={() => setDrawerOpen(true)} />
+      <div className={cn('transition-[padding] duration-200', collapsed ? 'lg:pl-0' : 'lg:pl-64')}>
+        <Topbar
+          onMenuClick={() => setDrawerOpen(true)}
+          onToggleSidebar={toggleCollapsed}
+          sidebarCollapsed={collapsed}
+        />
         <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <Suspense
             fallback={

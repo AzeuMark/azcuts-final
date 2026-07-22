@@ -36,7 +36,7 @@
 ### 1.1 Theme tokens (Tailwind theme + CSS variables, toggled by the `dark` class on `<html>`)
 - **Light:** background `#F7F8FA`, surface `#FFFFFF`, text `#111827`, muted `#6B7280`, border `#E5E7EB`.
 - **Dark:** background `#0F1115`, surface `#171A21`, text `#F3F4F6`, muted `#9CA3AF`, border `#232733`.
-- **Brand accent:** a single confident accent (e.g. teal/indigo `#4F46E5` / `#14B8A6`) used for primary buttons, active nav, highlights — consistent across both themes.
+- **Brand accent:** a confident red brand paired with a water-blue accent (`#E11D48` / `#0EA5E9`) used for primary buttons, active nav, highlights — consistent across both themes.
 - **Semantic:** success `#16A34A`, warning `#D97706`, danger `#DC2626`, info `#2563EB`.
 - **Status colors** (badges): pending=amber, accepted=blue, in_service=indigo, done=green, cancelled=red.
 

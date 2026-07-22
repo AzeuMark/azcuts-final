@@ -18,6 +18,10 @@ const ALLOWED = {
   cancelled: [],
 };
 
+// A booking is "active" (in flight) until it reaches a terminal state.
+// Used to enforce the one-active-booking-per-customer rule at creation time.
+const ACTIVE_STATUSES = ['pending', 'accepted', 'in_service'];
+
 function assertTransition(from, to) {
   if (!ALLOWED[from] || !ALLOWED[from].includes(to)) {
     throw ApiError.conflict(`Cannot change status from '${from}' to '${to}'`);
@@ -59,6 +63,19 @@ async function createBooking({
   // gcash exists in the schema but is disabled (never processed).
   if (paymentMethod && paymentMethod !== 'cash') {
     throw ApiError.badRequest('GCash is not available yet — please choose cash');
+  }
+
+  // One active booking at a time: a customer can't open a new booking while an
+  // earlier one is still in flight (pending / accepted / in_service). They must
+  // let it finish (done) or cancel it first.
+  const activeBooking = await Appointment.findOne({
+    customer: customerId,
+    status: { $in: ACTIVE_STATUSES },
+  }).select('_id status');
+  if (activeBooking) {
+    throw ApiError.conflict(
+      'You already have a booking in progress. Please wait until it is completed or cancelled before booking again.'
+    );
   }
 
   const settings = await Settings.findById('system');

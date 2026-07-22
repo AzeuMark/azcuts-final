@@ -29,6 +29,8 @@ import { useServices, useExtras } from '../../hooks/useServices';
 import { useSlots } from '../../hooks/useSlots';
 import { useBookableStaff } from '../../hooks/useBookableStaff';
 import { useSettingsPublic } from '../../hooks/useSettingsPublic';
+import { useMyAppointments } from '../../hooks/useMyAppointments';
+import StatusBadge from '../../components/StatusBadge';
 
 import appointmentApi from '../../api/appointment.api';
 import { getApiErrorMessage } from '../../config/axios';
@@ -86,6 +88,13 @@ export default function BookWizard() {
   const servicesQuery = useServices();
   const extrasQuery = useExtras();
   const staffQuery = useBookableStaff();
+
+  // Enforce one active booking at a time (the server enforces this too). A booking
+  // is "active" until it's done or cancelled.
+  const myAppointmentsQuery = useMyAppointments({});
+  const activeBooking = (myAppointmentsQuery.data?.appointments || []).find((a) =>
+    ['pending', 'accepted', 'in_service'].includes(a.status)
+  );
 
   const [category, setCategory] = useState('all');
   const [receipt, setReceipt] = useState(null);
@@ -201,6 +210,55 @@ export default function BookWizard() {
           <Link to="/app/history" className={buttonVariants({ variant: 'ghost' })}>
             View my bookings
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------- ACTIVE BOOKING GATE
+  // If the customer already has a booking in progress, they can't start another
+  // until it finishes or is cancelled.
+  if (activeBooking) {
+    return (
+      <div>
+        <PageHeader
+          title="Book a service"
+          description="Choose a service, add extras, pick a time, and confirm."
+        />
+        <div className="mx-auto max-w-xl">
+          <div className="rounded-2xl border border-line bg-surface p-6 text-center shadow-card">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-warning/10 text-warning">
+              <Info className="h-7 w-7" />
+            </div>
+            <h2 className="mt-4 text-lg font-semibold text-ink">
+              You already have a booking in progress
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              You can only have one active booking at a time. Please wait until your current booking is
+              completed, or cancel it, before booking again.
+            </p>
+
+            <div className="mt-5 rounded-xl border border-line bg-surface-2 p-4 text-left">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-medium text-ink">
+                  {activeBooking.service?.name || 'Your booking'}
+                </span>
+                <StatusBadge status={activeBooking.status} />
+              </div>
+              <p className="mt-1 text-sm text-muted">
+                {activeBooking.scheduledStart ? formatDateTime(activeBooking.scheduledStart) : ''}
+                {activeBooking.assignedStaff?.fullName
+                  ? ` · ${activeBooking.assignedStaff.fullName}`
+                  : ''}
+              </p>
+            </div>
+
+            <div className="mt-5 flex justify-center">
+              <Link to="/app/history" className={buttonVariants()}>
+                View my bookings
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     );

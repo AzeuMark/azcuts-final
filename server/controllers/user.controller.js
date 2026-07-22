@@ -61,4 +61,15 @@ const uploadAvatar = asyncHandler(async (req, res) => {
   return ok(res, { avatar: user.avatar }, 'Avatar updated');
 });
 
-module.exports = { getProfile, updateProfile, changePassword, uploadAvatar };
+// PUT /users/theme — persist the user's preferred UI theme across devices.
+const setTheme = asyncHandler(async (req, res) => {
+  const { theme } = req.body;
+  const user = await User.findById(req.user.id);
+  if (!user) throw ApiError.notFound('User not found');
+
+  user.theme = theme;
+  await user.save();
+  return ok(res, { user: user.toPublic() }, 'Theme saved');
+});
+
+module.exports = { getProfile, updateProfile, changePassword, uploadAvatar, setTheme };

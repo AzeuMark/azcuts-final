@@ -17,6 +17,10 @@ export default function DataTable({
   page,
   totalPages,
   onPageChange,
+  pageSize,
+  onPageSizeChange,
+  pageSizeOptions,
+  total,
   empty,
   className,
 }) {
@@ -73,9 +77,17 @@ export default function DataTable({
           )}
         </TBody>
       </Table>
-      {totalPages > 1 && (
+      {(totalPages > 1 || typeof onPageSizeChange === 'function') && (
         <div className="border-t border-line p-4">
-          <Pagination page={page} totalPages={totalPages} onPageChange={onPageChange} />
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+            pageSize={pageSize}
+            onPageSizeChange={onPageSizeChange}
+            pageSizeOptions={pageSizeOptions}
+            total={total}
+          />
         </div>
       )}
     </div>

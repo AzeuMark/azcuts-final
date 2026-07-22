@@ -15,7 +15,7 @@ export default function Dashboard() {
 
   const recent = useQuery({
     queryKey: ['admin', 'history', 'users', { page: 1, recent: true }],
-    queryFn: () => adminApi.historyUsers({ page: 1 }).then((r) => r.data),
+    queryFn: () => adminApi.history({ page: 1, limit: 5 }).then((r) => r.data),
     staleTime: 15_000,
   });
 

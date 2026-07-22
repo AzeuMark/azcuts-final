@@ -8,11 +8,20 @@ const Extra = require('../models/Extra');
 
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 
-function imagePathFromFile(file) {
-  return file ? `/uploads/${file.filename}` : undefined;
+// Servable URL for a DB-stored image. Cache-busted with the write time so the
+// browser refetches after an admin swaps the picture.
+function dbImageUrl(service) {
+  return `/api/services/${service._id}/image?v=${Date.now()}`;
 }
 
-// Best-effort removal of a previously uploaded image (only touches /uploads).
+// Copy an uploaded (in-memory) image onto the service document.
+function applyImage(service, file) {
+  service.imageData = file.buffer;
+  service.imageType = file.mimetype;
+}
+
+// Best-effort removal of a previously uploaded LEGACY disk image (only touches
+// /uploads; DB-stored images go away with the document).
 function deleteUploadIfLocal(imagePath) {
   if (imagePath && imagePath.startsWith('/uploads/')) {
     const full = path.join(UPLOADS_DIR, path.basename(imagePath));
@@ -45,16 +54,28 @@ const getService = asyncHandler(async (req, res) => {
 
 const createService = asyncHandler(async (req, res) => {
   const { name, category, description, price, durationMinutes, isActive } = req.body;
-  const service = await Service.create({
+  const service = new Service({
     name,
     category,
     description,
     price,
     durationMinutes,
     isActive: isActive !== undefined ? isActive : true,
-    image: imagePathFromFile(req.file),
   });
-  return created(res, { service }, 'Service created');
+
+  if (req.file) applyImage(service, req.file);
+  await service.save(); // assigns _id (needed to build the image URL)
+
+  if (req.file) {
+    service.image = dbImageUrl(service);
+    await service.save();
+  }
+
+  // Never ship the raw bytes back in JSON.
+  const json = service.toObject();
+  delete json.imageData;
+  delete json.imageType;
+  return created(res, { service: json }, 'Service created');
 });
 
 const updateService = asyncHandler(async (req, res) => {
@@ -66,12 +87,17 @@ const updateService = asyncHandler(async (req, res) => {
   });
 
   if (req.file) {
-    deleteUploadIfLocal(service.image); // clean up the old file
-    service.image = imagePathFromFile(req.file);
+    deleteUploadIfLocal(service.image); // clean up any legacy disk file
+    applyImage(service, req.file);
+    service.image = dbImageUrl(service);
   }
 
   await service.save();
-  return ok(res, { service }, 'Service updated');
+
+  const json = service.toObject();
+  delete json.imageData;
+  delete json.imageType;
+  return ok(res, { service: json }, 'Service updated');
 });
 
 const deleteService = asyncHandler(async (req, res) => {
@@ -79,6 +105,16 @@ const deleteService = asyncHandler(async (req, res) => {
   if (!service) throw ApiError.notFound('Service not found');
   deleteUploadIfLocal(service.image);
   return ok(res, { id: req.params.id }, 'Service deleted');
+});
+
+// GET /services/:id/image — stream the DB-stored image bytes (public).
+const getServiceImage = asyncHandler(async (req, res) => {
+  const service = await Service.findById(req.params.id).select('+imageData +imageType');
+  if (!service || !service.imageData) throw ApiError.notFound('Image not found');
+
+  res.set('Content-Type', service.imageType || 'application/octet-stream');
+  res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  return res.send(service.imageData);
 });
 
 // ------------------------------------------------------------------ EXTRAS
@@ -130,6 +166,7 @@ const deleteExtra = asyncHandler(async (req, res) => {
 module.exports = {
   listServices,
   getService,
+  getServiceImage,
   createService,
   updateService,
   deleteService,

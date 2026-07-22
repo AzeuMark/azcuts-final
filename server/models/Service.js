@@ -8,7 +8,12 @@ const serviceSchema = new mongoose.Schema(
     description: { type: String, trim: true },
     price: { type: Number, required: true, min: 0 },
     durationMinutes: { type: Number, required: true, default: 30, min: 0 },
+    // `image` is the servable URL (points at GET /api/services/:id/image when the
+    // bytes live in the DB, or a legacy /uploads/* path). The binary itself is
+    // stored on the document and kept out of list queries via `select: false`.
     image: { type: String },
+    imageData: { type: Buffer, select: false },
+    imageType: { type: String, select: false },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

@@ -49,18 +49,29 @@ const dashboard = asyncHandler(async (req, res) => {
   });
 });
 
-// GET /admin/users?role&search&page
+// Sort presets for the user manager.
+const USER_SORTS = {
+  newest: { createdAt: -1 },
+  oldest: { createdAt: 1 },
+  name_asc: { fullName: 1 },
+  name_desc: { fullName: -1 },
+};
+
+// GET /admin/users?role&status&search&sort&page&limit
 const listUsers = asyncHandler(async (req, res) => {
   const { page, limit, skip } = pageParams(req);
   const filter = {};
   if (req.query.role) filter.role = req.query.role;
+  if (req.query.status) filter.status = req.query.status;
   if (req.query.search) {
     const rx = new RegExp(escapeRegex(req.query.search), 'i');
-    filter.$or = [{ fullName: rx }, { email: rx }];
+    filter.$or = [{ fullName: rx }, { email: rx }, { username: rx }];
   }
 
+  const sort = USER_SORTS[req.query.sort] || USER_SORTS.newest;
+
   const [users, total] = await Promise.all([
-    User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    User.find(filter).sort(sort).skip(skip).limit(limit),
     User.countDocuments(filter),
   ]);
 
@@ -141,9 +152,10 @@ const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) throw ApiError.notFound('User not found');
 
+  // Admin accounts can't be deleted from the User Manager — an admin manages
+  // their own credentials from their dashboard settings instead.
   if (user.role === 'admin') {
-    const admins = await User.countDocuments({ role: 'admin' });
-    if (admins <= 1) throw ApiError.badRequest('Cannot delete the last admin account');
+    throw ApiError.badRequest('Admin accounts cannot be deleted');
   }
 
   await user.deleteOne();
@@ -166,39 +178,59 @@ const setDiscount = asyncHandler(async (req, res) => {
   return ok(res, { appointment: populated }, 'Discount applied');
 });
 
-// Shared history lister.
-async function listHistory(req, extraFilter) {
+// Sort presets for the unified booking history.
+const HISTORY_SORTS = {
+  newest: { createdAt: -1 },
+  oldest: { createdAt: 1 },
+  upcoming: { scheduledStart: 1 },
+  scheduled: { scheduledStart: -1 },
+  total_desc: { 'priceSnapshot.total': -1 },
+  total_asc: { 'priceSnapshot.total': 1 },
+};
+
+// GET /admin/history — unified appointment/booking history (replaces the old
+// staff/users split, which rendered identical tables from the same data).
+// Filters: ?status ?range ?assignment(all|assigned|unassigned) ?search ?sort ?page ?limit
+const history = asyncHandler(async (req, res) => {
   const { page, limit, skip } = pageParams(req);
-  const filter = { ...extraFilter };
+  const filter = {};
+
   if (req.query.status) filter.status = req.query.status;
 
   const bounds = rangeBounds(req.query.range);
   if (bounds) filter.createdAt = { $gte: bounds.start, $lte: bounds.end };
 
+  if (req.query.assignment === 'assigned') filter.assignedStaff = { $ne: null };
+  else if (req.query.assignment === 'unassigned') filter.assignedStaff = null;
+
+  // Free-text search across the receipt number and customer / staff names.
+  const search = req.query.search && String(req.query.search).trim();
+  if (search) {
+    const rx = new RegExp(escapeRegex(search), 'i');
+    const matchedUsers = await User.find({ fullName: rx }).select('_id');
+    const userIds = matchedUsers.map((u) => u._id);
+    filter.$or = [
+      { receiptNo: rx },
+      { customer: { $in: userIds } },
+      { assignedStaff: { $in: userIds } },
+    ];
+  }
+
+  const sort = HISTORY_SORTS[req.query.sort] || HISTORY_SORTS.newest;
+
   const [appointments, total] = await Promise.all([
     Appointment.find(filter)
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .skip(skip)
       .limit(limit)
       .populate(['service', 'assignedStaff', 'extras', 'customer']),
     Appointment.countDocuments(filter),
   ]);
 
-  return { appointments, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
-}
-
-// GET /admin/history/staff — appointments that were routed to a staff member.
-const historyStaff = asyncHandler(async (req, res) => {
-  const extra = { assignedStaff: { $ne: null } };
-  if (req.query.staffId) extra.assignedStaff = req.query.staffId;
-  return ok(res, await listHistory(req, extra));
-});
-
-// GET /admin/history/users — all appointments (customer-centric).
-const historyUsers = asyncHandler(async (req, res) => {
-  const extra = {};
-  if (req.query.customerId) extra.customer = req.query.customerId;
-  return ok(res, await listHistory(req, extra));
+  return ok(res, {
+    appointments,
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  });
 });
 
 module.exports = {
@@ -208,6 +240,5 @@ module.exports = {
   updateUser,
   deleteUser,
   setDiscount,
-  historyStaff,
-  historyUsers,
+  history,
 };

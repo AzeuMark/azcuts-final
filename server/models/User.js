@@ -34,6 +34,9 @@ const userSchema = new mongoose.Schema(
     },
     isApproved: { type: Boolean, default: true }, // reserved
     avatar: { type: String },
+    // Preferred UI theme, persisted across devices. Unset until the user (or the
+    // first authenticated sync) saves one.
+    theme: { type: String, enum: ['light', 'dark'] },
 
     // Staff denormalized stats
     totalServed: { type: Number, default: 0 },

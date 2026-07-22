@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Plus, Pencil, Trash2, Scissors, Sparkles } from 'lucide-react';
+import { Plus, Pencil, Trash2, Scissors, Sparkles, Search } from 'lucide-react';
 
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
@@ -19,6 +19,24 @@ import inventoryApi from '../../api/inventory.api';
 import { getApiErrorMessage } from '../../config/axios';
 import { formatMoney } from '../../utils/formatMoney';
 import { serverAsset } from '../../utils/serverAsset';
+
+const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
+
+// The inventory endpoints return the full list, so filtering + pagination are
+// done on the client. Returns the current page's rows plus paging metadata.
+function usePagedRows(rows, search, page, limit) {
+  return useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const filtered = term
+      ? rows.filter((r) => r.name?.toLowerCase().includes(term))
+      : rows;
+    const total = filtered.length;
+    const pages = Math.max(1, Math.ceil(total / limit));
+    const current = Math.min(page, pages);
+    const start = (current - 1) * limit;
+    return { slice: filtered.slice(start, start + limit), total, pages, current };
+  }, [rows, search, page, limit]);
+}
 
 export default function Inventory() {
   const [tab, setTab] = useState('services');
@@ -45,12 +63,17 @@ function ServicesPanel() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'services'],
     queryFn: () => inventoryApi.listServices().then((r) => r.data?.services || []),
     placeholderData: keepPreviousData,
   });
+
+  const paged = usePagedRows(data || [], search, page, limit);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['admin', 'services'] });
@@ -107,13 +130,37 @@ function ServicesPanel() {
 
   return (
     <div>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Input
+          leftIcon={<Search className="h-4 w-4" />}
+          placeholder="Search services…"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          containerClassName="sm:max-w-xs"
+        />
         <Button onClick={() => setEditing('new')}>
           <Plus className="h-4 w-4" />
           Add service
         </Button>
       </div>
-      <DataTable columns={columns} data={data || []} loading={isLoading} />
+      <DataTable
+        columns={columns}
+        data={paged.slice}
+        loading={isLoading}
+        page={paged.current}
+        totalPages={paged.pages}
+        onPageChange={setPage}
+        pageSize={limit}
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
+        onPageSizeChange={(size) => {
+          setLimit(size);
+          setPage(1);
+        }}
+        total={paged.total}
+      />
 
       {editing && (
         <ServiceFormModal
@@ -229,11 +276,26 @@ function ServiceFormModal({ service, onClose, onSaved }) {
             {previewUrl && <img src={previewUrl} alt="" className="h-16 w-16 rounded-lg object-cover ring-1 ring-line" />}
             <input
               type="file"
-              accept="image/*"
+              accept=".png,.jpg,.jpeg,image/png,image/jpeg"
               className="block w-full text-sm text-muted file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-fg hover:file:bg-brand-hover"
-              {...register('image')}
+              {...register('image', {
+                validate: (files) => {
+                  const f = files?.[0];
+                  if (!f) return true;
+                  if (!['image/png', 'image/jpeg', 'image/jpg'].includes(f.type)) {
+                    return 'Only PNG, JPG, or JPEG images are allowed';
+                  }
+                  if (f.size > 5 * 1024 * 1024) return 'Image must be smaller than 5MB';
+                  return true;
+                },
+              })}
             />
           </div>
+          {errors.image?.message ? (
+            <p className="mt-1.5 text-sm text-danger">{errors.image.message}</p>
+          ) : (
+            <p className="mt-1.5 text-xs text-muted">PNG, JPG, or JPEG · max 5MB.</p>
+          )}
         </div>
         <label className="flex items-center gap-2 text-sm text-ink">
           <input type="checkbox" className="h-4 w-4 rounded border-line text-brand focus:ring-brand" {...register('isActive')} />
@@ -249,12 +311,17 @@ function ExtrasPanel() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'extras'],
     queryFn: () => inventoryApi.listExtras().then((r) => r.data?.extras || []),
     placeholderData: keepPreviousData,
   });
+
+  const paged = usePagedRows(data || [], search, page, limit);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['admin', 'extras'] });
@@ -295,13 +362,37 @@ function ExtrasPanel() {
 
   return (
     <div>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Input
+          leftIcon={<Search className="h-4 w-4" />}
+          placeholder="Search extras…"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          containerClassName="sm:max-w-xs"
+        />
         <Button onClick={() => setEditing('new')}>
           <Plus className="h-4 w-4" />
           Add extra
         </Button>
       </div>
-      <DataTable columns={columns} data={data || []} loading={isLoading} />
+      <DataTable
+        columns={columns}
+        data={paged.slice}
+        loading={isLoading}
+        page={paged.current}
+        totalPages={paged.pages}
+        onPageChange={setPage}
+        pageSize={limit}
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
+        onPageSizeChange={(size) => {
+          setLimit(size);
+          setPage(1);
+        }}
+        total={paged.total}
+      />
 
       {editing && (
         <ExtraFormModal

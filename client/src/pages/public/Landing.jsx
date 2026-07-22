@@ -16,7 +16,10 @@ import { Tabs } from '../../components/ui/Tabs';
 import Skeleton from '../../components/ui/Skeleton';
 import { buttonVariants } from '../../components/ui/Button';
 import { useSettingsPublic } from '../../hooks/useSettingsPublic';
+import { useAuth } from '../../hooks/useAuth';
 import { formatClock } from '../../utils/datetime';
+
+const HOME_BY_ROLE = { user: '/app/book', staff: '/staff', admin: '/admin' };
 
 const HIGHLIGHTS = [
   { icon: CalendarCheck, title: 'Real-time slots', desc: 'Open times already account for the extras you pick.' },
@@ -44,7 +47,10 @@ const todayKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().ge
 
 export default function Landing() {
   const { data, isLoading } = useSettingsPublic();
+  const { isAuthenticated, role } = useAuth();
   const [category, setCategory] = useState('all');
+
+  const bookHref = isAuthenticated ? HOME_BY_ROLE[role] || '/app/book' : '/register';
 
   const shop = data?.shopInfo || {};
   const currency = data?.currency || 'PHP';
@@ -97,7 +103,7 @@ export default function Landing() {
                 match you with the next available one.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Link to="/register" className={buttonVariants({ variant: 'primary', size: 'lg' })}>
+                <Link to={bookHref} className={buttonVariants({ variant: 'primary', size: 'lg' })}>
                   Book now
                   <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -305,12 +311,20 @@ export default function Landing() {
             {shop.name || 'AzCuts'} · {new Date().getFullYear()}
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <Link to="/login" className="text-muted hover:text-ink">
-              Log in
-            </Link>
-            <Link to="/register" className="font-medium text-brand hover:underline">
-              Book now
-            </Link>
+            {isAuthenticated ? (
+              <Link to={HOME_BY_ROLE[role] || '/app'} className="font-medium text-brand hover:underline">
+                Go to dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="text-muted hover:text-ink">
+                  Log in
+                </Link>
+                <Link to="/register" className="font-medium text-brand hover:underline">
+                  Book now
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </footer>

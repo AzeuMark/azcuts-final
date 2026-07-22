@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -30,14 +30,34 @@ export default function UserManager() {
   const nicknames = settings?.nicknames || [];
 
   const [role, setRole] = useState('');
+  const [status, setStatus] = useState('');
+  const [sort, setSort] = useState('newest');
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [editing, setEditing] = useState(null); // user object or 'new'
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const { data, isLoading } = useAdminUsers({ role: role || undefined, search: search || undefined, page });
+  // Debounce the search box so we don't refetch on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const { data, isLoading } = useAdminUsers({
+    role: role || undefined,
+    status: status || undefined,
+    search: search || undefined,
+    sort,
+    page,
+    limit,
+  });
   const users = data?.users || [];
-  const pagination = data?.pagination || { page: 1, pages: 1 };
+  const pagination = data?.pagination || { page: 1, pages: 1, total: 0 };
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['admin', 'users'] });
 
@@ -80,8 +100,14 @@ export default function UserManager() {
             variant="ghost"
             size="sm"
             onClick={() => setDeleteTarget(u)}
-            disabled={u._id === me?.id}
-            title={u._id === me?.id ? "You can't delete yourself" : 'Delete'}
+            disabled={u._id === me?.id || u.role === 'admin'}
+            title={
+              u._id === me?.id
+                ? "You can't delete yourself"
+                : u.role === 'admin'
+                  ? 'Admin accounts cannot be deleted'
+                  : 'Delete'
+            }
           >
             <Trash2 className="h-4 w-4 text-danger" />
           </Button>
@@ -103,30 +129,58 @@ export default function UserManager() {
         }
       />
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+      <div className="mb-4 flex flex-col gap-3">
         <Input
           leftIcon={<Search className="h-4 w-4" />}
-          placeholder="Search name or email…"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          containerClassName="sm:max-w-xs"
+          placeholder="Search name, username, or email…"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          containerClassName="sm:max-w-sm"
         />
-        <Select
-          value={role}
-          onChange={(e) => {
-            setRole(e.target.value);
-            setPage(1);
-          }}
-          containerClassName="sm:max-w-[180px]"
-        >
-          <option value="">All roles</option>
-          <option value="user">Customers</option>
-          <option value="staff">Staff</option>
-          <option value="admin">Admins</option>
-        </Select>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <Select
+            value={role}
+            onChange={(e) => {
+              setRole(e.target.value);
+              setPage(1);
+            }}
+            containerClassName="sm:max-w-[170px]"
+            aria-label="Filter by role"
+          >
+            <option value="">All roles</option>
+            <option value="user">Customers</option>
+            <option value="staff">Staff</option>
+            <option value="admin">Admins</option>
+          </Select>
+          <Select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
+            containerClassName="sm:max-w-[170px]"
+            aria-label="Filter by status"
+          >
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="in_service">In service</option>
+          </Select>
+          <Select
+            value={sort}
+            onChange={(e) => {
+              setSort(e.target.value);
+              setPage(1);
+            }}
+            containerClassName="sm:max-w-[180px]"
+            aria-label="Sort users"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="name_asc">Name (A → Z)</option>
+            <option value="name_desc">Name (Z → A)</option>
+          </Select>
+        </div>
       </div>
 
       <DataTable
@@ -136,6 +190,12 @@ export default function UserManager() {
         page={pagination.page}
         totalPages={pagination.pages}
         onPageChange={setPage}
+        pageSize={limit}
+        onPageSizeChange={(size) => {
+          setLimit(size);
+          setPage(1);
+        }}
+        total={pagination.total}
       />
 
       {editing && (

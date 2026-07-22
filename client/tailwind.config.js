@@ -8,14 +8,15 @@ export default {
     extend: {
       colors: {
         // Brand + semantic tokens (fixed across themes) — CLIENT_PLAN §1.1 / DESIGN.md.
+        // Primary identity: red brand paired with a water-blue accent.
         brand: {
-          DEFAULT: '#4F46E5',
-          hover: '#4338CA',
+          DEFAULT: '#E11D48',
+          hover: '#BE123C',
           fg: '#FFFFFF',
         },
         accent: {
-          DEFAULT: '#14B8A6',
-          hover: '#0D9488',
+          DEFAULT: '#0EA5E9',
+          hover: '#0284C7',
         },
         success: '#16A34A',
         warning: '#D97706',

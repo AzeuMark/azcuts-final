@@ -24,7 +24,7 @@ router.delete('/users/:id', ctrl.deleteUser);
 
 router.patch('/appointments/:id/discount', discountRules, validate, ctrl.setDiscount);
 
-router.get('/history/staff', ctrl.historyStaff);
-router.get('/history/users', ctrl.historyUsers);
+// Unified booking history (replaces the old /history/staff + /history/users split).
+router.get('/history', ctrl.history);
 
 module.exports = router;

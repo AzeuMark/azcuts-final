@@ -4,7 +4,7 @@ const auth = require('../middleware/auth');
 const optionalAuth = require('../middleware/optionalAuth');
 const requireRole = require('../middleware/roles');
 const validate = require('../middleware/validate');
-const upload = require('../middleware/upload');
+const uploadImage = require('../middleware/uploadImage');
 const ctrl = require('../controllers/inventory.controller');
 const V = require('../validators/inventory.validator');
 
@@ -12,12 +12,13 @@ const router = express.Router();
 
 // ---- Services (GET is public + landing-facing; writes are admin-only) ----
 router.get('/services', optionalAuth, ctrl.listServices);
+router.get('/services/:id/image', ctrl.getServiceImage); // public image stream
 router.get('/services/:id', optionalAuth, ctrl.getService);
 router.post(
   '/services',
   auth,
   requireRole('admin'),
-  upload.single('image'),
+  uploadImage.single('image'),
   V.createServiceRules,
   validate,
   ctrl.createService
@@ -26,7 +27,7 @@ router.put(
   '/services/:id',
   auth,
   requireRole('admin'),
-  upload.single('image'),
+  uploadImage.single('image'),
   V.updateServiceRules,
   validate,
   ctrl.updateService

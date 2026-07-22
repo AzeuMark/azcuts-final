@@ -9,10 +9,21 @@ export function useAdminDashboard() {
   });
 }
 
-export function useAdminUsers({ role, search, page } = {}) {
+export function useAdminUsers({ role, status, search, sort, page, limit } = {}) {
   return useQuery({
-    queryKey: ['admin', 'users', { role: role || null, search: search || '', page: page || 1 }],
-    queryFn: () => adminApi.listUsers({ role, search, page }).then((r) => r.data),
+    queryKey: [
+      'admin',
+      'users',
+      {
+        role: role || null,
+        status: status || null,
+        search: search || '',
+        sort: sort || 'newest',
+        page: page || 1,
+        limit: limit || 20,
+      },
+    ],
+    queryFn: () => adminApi.listUsers({ role, status, search, sort, page, limit }).then((r) => r.data),
     placeholderData: keepPreviousData,
     staleTime: 10_000,
   });
