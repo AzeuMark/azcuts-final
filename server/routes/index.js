@@ -22,8 +22,8 @@ router.get('/health', (req, res) => {
 router.use('/auth', require('./auth.routes')); // Phase 1
 // router.use('/users', require('./user.routes'));           // Phase 1
 router.use('/', require('./inventory.routes')); // Phase 2 — /services + /extras
-// router.use('/appointments', require('./appointment.routes')); // Phase 3-4
-// router.use('/staff', require('./staff.routes'));          // Phase 4
+router.use('/appointments', require('./appointment.routes')); // Phase 3-4
+router.use('/staff', require('./staff.routes')); // Phase 4
 // router.use('/admin', require('./admin.routes'));          // Phase 6
 // router.use('/analytics', require('./analytics.routes'));  // Phase 7
 // router.use('/settings', require('./settings.routes'));    // Phase 8

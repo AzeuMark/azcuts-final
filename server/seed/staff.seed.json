@@ -1,0 +1,20 @@
+[
+  {
+    "fullName": "Miguel Santos",
+    "email": "miguel@azcuts.com",
+    "phone": "",
+    "password": "$2b$10$.xt0jL3.Uxa0Ls3L4KOS3ucNBaSeoW49.ICe9GEk4bve72ahbLeUC",
+    "role": "staff",
+    "status": "active",
+    "nickname": "Barber"
+  },
+  {
+    "fullName": "Ramon Cruz",
+    "email": "ramon@azcuts.com",
+    "phone": "",
+    "password": "$2b$10$.xt0jL3.Uxa0Ls3L4KOS3ucNBaSeoW49.ICe9GEk4bve72ahbLeUC",
+    "role": "staff",
+    "status": "active",
+    "nickname": "Hairstylist"
+  }
+]

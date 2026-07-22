@@ -63,10 +63,33 @@ async function seedCollection(Model, file, label) {
   logger.info(`Seeded ${label}: ${inserted} new, ${items.length - inserted} already present`);
 }
 
+async function seedStaff() {
+  const staff = readJson('staff.seed.json'); // passwords are ALREADY bcrypt-hashed
+  let inserted = 0;
+  for (const member of staff) {
+    const email = member.email.toLowerCase();
+    const existing = await User.findOne({ email });
+    if (existing) continue;
+    // Raw insert preserves the pre-hashed password (bypasses the save hook).
+    await User.collection.insertOne({
+      ...member,
+      email,
+      totalServed: 0,
+      avgRating: 0,
+      ratingCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    inserted += 1;
+  }
+  logger.info(`Seeded staff: ${inserted} new, ${staff.length - inserted} already present`);
+}
+
 async function run() {
   await connectDB();
   await seedSettings();
   await seedAdmin();
+  await seedStaff();
   await seedCollection(Service, 'services.seed.json', 'services');
   await seedCollection(Extra, 'extras.seed.json', 'extras');
   await mongoose.connection.close();

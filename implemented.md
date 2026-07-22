@@ -156,3 +156,97 @@ server/routes/inventory.routes.js
 server/seed/services.seed.json  extras.seed.json
 ```
 **Files changed:** `server/middleware/error.js` (MulterError), `server/routes/index.js` (mount inventory), `server/seed/seed.js` (seed services + extras).
+
+---
+
+### Phase 3 — Scheduling & Booking core  ✅ (2026-07-22)
+
+**Goal:** a customer can complete a full booking — server-computed slots, prices, and receipt number.
+
+**What was built**
+- **Utils**
+  - `utils/datetime.js` — dayjs with `utc` + `timezone` + `customParseFormat`; helpers `weekdayKey`, `zonedDateTime`, `inZone`, `dayStamp` (all Asia/Manila-aware; DB stays UTC).
+  - `utils/receiptNo.js` — own `counters` collection; `nextReceiptNo()` does an atomic `findByIdAndUpdate($inc)` per Manila-day → `AZ-YYYYMMDD-####` (collision-safe under concurrency).
+- **Services (business logic)**
+  - `pricing.service.js` (§2.4) — `computePricing` → `{ base, extras[], subtotal, discountPercent, discountAmount, taxRate, taxAmount, total, currency }`, rounded to 2 decimals at each boundary.
+  - `scheduling.service.js` (§2.2) — `getAvailableSlots` generates candidates from `storeHours` + `slotStepMinutes`, uses **`totalDuration = service + Σ extras`**, excludes past slots (tz-aware), returns `{ start, end, availableStaffCount }`. Plus reusable helpers: `resolveServiceAndExtras`, `isStaffFree` (overlap test), `assertWithinStoreHours`.
+  - `appointment.service.js` — `createBooking` orchestration: resolves service/extras, validates future + within-hours, checks explicit-staff availability (409 if busy) or pools an auto booking, builds the price snapshot, generates the receipt number, and writes the appointment with an initial `statusHistory` entry.
+  - `receipt.service.js` — canonical receipt JSON (shop, receiptNo, customer, staff, service, extras, schedule, totals, payment, status).
+- **HTTP layer**
+  - `controllers/appointment.controller.js` — `availableSlots`, `createBooking`, `listMine` (paginated), `getOne`, `getReceipt`; ownership guard (owner / assigned staff / admin); tolerant `extras` query parsing (array or CSV).
+  - `validators/appointment.validator.js` — slot + booking rules.
+  - `routes/appointment.routes.js` (mounted at `/api/appointments`) with `/slots` and `/mine` declared before `/:id`.
+- **Seed:** `seed/staff.seed.json` (2 active staff — Miguel/Barber, Ramon/Hairstylist, password `Staff@123`); `seed.js` extended to seed staff (raw insert preserves the hash). Enables realistic slot/assignment testing.
+
+**Definition of Done — verified** (temporary Node test, since removed)
+- `GET /slots` (no extras) → `totalDuration=30`, 22 slots, `availableStaffCount=2`. ✅
+- `GET /slots` (with a 10-min extra) → **`totalDuration=40`** (extras extend the block, §2.2). ✅
+- `POST /appointments` (explicit staff + extra) → **201**, `receiptNo=AZ-20260722-0001`, `subtotal=200`, `total=200` (150 + 50, tax 0), booked block **40 min**, staff assigned, `status=pending`. ✅
+- Re-booking the same staff/slot → **409** (no double-booking). ✅
+- Auto booking (no staff) → **201**, `assignedStaff=null`, `autoAssigned=true` (pending pool). ✅
+- `paymentMethod:gcash` → **400**; past time → **400**. ✅
+- `GET /mine` → 2 items; `GET /:id/receipt` → total 200, 1 extra, staff name present. ✅
+- A different customer requesting the booking → **403** (ownership). ✅
+- Test data cleaned afterward (DB back to admin + 2 staff / 5 services / 4 extras / settings).
+
+**Notes & decisions**
+- **Auto-assign least-loaded ROUTING is deferred to Phase 4** (per the phase plan). For now an auto booking (no `staffId`) lands in the pending pool (`assignedStaff:null`, `autoAssigned:true`), which is a valid full booking; Phase 4 adds `assignment.service` to route it to the least-loaded staff and the accept/reject lifecycle.
+- **gcash** is validated by the schema enum but blocked at booking time (400) since it is disabled.
+- No-double-booking is enforced at **creation time** (not just in slot listing), so concurrent/stale-slot bookings can't overlap a staff member.
+- Unknown/inactive extra ids are rejected (400) rather than silently dropped, keeping the price snapshot honest.
+
+**Files created**
+```
+server/utils/datetime.js  receiptNo.js
+server/services/pricing.service.js  scheduling.service.js  appointment.service.js  receipt.service.js
+server/controllers/appointment.controller.js
+server/validators/appointment.validator.js
+server/routes/appointment.routes.js
+server/seed/staff.seed.json
+```
+**Files changed:** `server/routes/index.js` (mount /appointments), `server/seed/seed.js` (seed staff).
+
+---
+
+### Phase 4 — State machine & Staff flow  ✅ (2026-07-22)
+
+**Goal:** enforce the appointment lifecycle end-to-end and give staff a working queue (accept/reject/start/finish), with least-loaded auto-assign and cancellation.
+
+**What was built**
+- **`services/assignment.service.js`** (§2.3) — `pickLeastLoadedStaff({start,end,excludeStaffIds})`: candidates are on-shift staff (`active`/`in_service`, i.e. not off-shift) who are **free** for the slot; picks the minimum `load` (count of that staff's `pending`+`in_service` appointments), tie-broken by fewest ratings then earliest joiner. `staffLoad(staffId)` helper.
+- **`services/appointment.service.js`** — the state machine (§2.1):
+  - `ALLOWED` transition map + `assertTransition` (409 on illegal/terminal), `pushHistory`, `assertAssignedOrAdmin`.
+  - `acceptAppointment` — pending→accepted; **atomic** `findOneAndUpdate` so two staff can't claim the same pooled booking; free-slot re-check.
+  - `rejectAppointment` — clears the assignment, keeps it pending, appends a `rejected` note, then **re-routes** to the next least-loaded staff (excluding the rejecter); cancels ("No staff available") only if none remain.
+  - `advanceStatus` — accepted→in_service (sets `startedAt`, staff `status:'in_service'`) and in_service→done (sets `finishedAt`, `totalServed++`, staff back to `active`).
+  - `cancelAppointment` — pending/accepted→cancelled for owner/assigned-staff/admin; requires a reason; records `cancelledBy`.
+  - `createBooking` now **auto-assigns via `assignment`** when no `staffId` is given (falls back to the pending pool if nobody is eligible).
+- **Staff HTTP layer**
+  - `controllers/staff.controller.js` — `listAppointments` (`?scope=incoming|mine`), `accept`, `reject`, `history` (done list + `totalServed`/`avgRating`/`ratingCount` + ratings), `setShift`.
+  - `validators/staff.validator.js` (`rejectRules`, `shiftRules`); `routes/staff.routes.js` mounted at `/api/staff` (all routes `auth` + `requireRole('staff')`).
+- **Appointment lifecycle endpoints** — `PATCH /appointments/:id/status` (in_service|done; assigned staff or admin) and `PATCH /appointments/:id/cancel` (owner/assigned staff/admin), with `statusChangeRules` + `cancelRules`.
+
+**Definition of Done — verified** (temporary Node test, since removed)
+- **Auto-assign least-loaded:** with miguel holding 2 bookings, an auto booking went to ramon (load 0). ✅
+- **Full lifecycle:** ramon saw it in `incoming` → accept (accepted) → start (in_service, staff status `in_service`) → finish (done, staff status `active`, `totalServed=1`). ✅
+- **Terminal:** cancelling a `done` appointment → **409**. ✅
+- **Reject re-route:** the rejecting staff was replaced by the other staff, booking stayed `pending`. ✅
+- **Cancel:** with reason → cancelled (`cancelledBy.role=user`); without reason → **422** (validator rejects it before the service). ✅
+- **Guards:** customer `PATCH /status` → **403**; a staff accepting another staff's routed appointment → **403**. ✅
+- **Shift:** miguel off-shift (`inactive`) → next auto booking skipped him and went to ramon. ✅
+- Staff/appointment test data cleaned; staff reset to the clean baseline afterward.
+
+**Notes & decisions**
+- **Socket.io emits are deferred to Phase 9** (per the phase plan). Every transition already appends to `statusHistory`; the emit points are marked with `TODO (Phase 9)` in the service so wiring `notify.service` later is a drop-in.
+- **Eligibility for assignment = on-shift (`active`/`in_service`) + free for the slot.** `inactive` = off-shift = never assigned. This matches the slot-availability staff set from Phase 3 so counts and routing agree. (`in_service` is a transient "serving right now" flag; the overlap test still governs actual time conflicts.)
+- `accept` supports both **claiming from the pool** (assignedStaff was null) and accepting a routed booking; the atomic update prevents double-claims.
+- `in_service → cancelled` is intentionally **not** allowed (a started service can only be completed), per the ALLOWED map.
+
+**Files created**
+```
+server/services/assignment.service.js
+server/controllers/staff.controller.js
+server/validators/staff.validator.js
+server/routes/staff.routes.js
+```
+**Files changed:** `server/services/appointment.service.js` (state machine + auto-assign in createBooking), `server/controllers/appointment.controller.js` (changeStatus, cancel), `server/validators/appointment.validator.js` (status/cancel rules), `server/routes/appointment.routes.js` (status + cancel), `server/routes/index.js` (mount /staff).
