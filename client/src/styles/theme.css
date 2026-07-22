@@ -1,0 +1,22 @@
+/*
+ * Theme tokens (CLIENT_PLAN §1.1 / DESIGN.md) as space-separated RGB channels so
+ * Tailwind's `rgb(var(--token) / <alpha-value>)` color functions can add opacity.
+ * Light is the default; `.dark` on <html> flips them (Tailwind darkMode: 'class').
+ */
+:root {
+  --color-app: 247 248 250; /* #F7F8FA */
+  --color-surface: 255 255 255; /* #FFFFFF */
+  --color-surface-2: 241 243 247; /* #F1F3F7 */
+  --color-text: 17 24 39; /* #111827 */
+  --color-text-muted: 107 114 128; /* #6B7280 */
+  --color-border: 229 231 235; /* #E5E7EB */
+}
+
+.dark {
+  --color-app: 15 17 21; /* #0F1115 */
+  --color-surface: 23 26 33; /* #171A21 */
+  --color-surface-2: 31 35 44; /* #1F232C */
+  --color-text: 243 244 246; /* #F3F4F6 */
+  --color-text-muted: 156 163 175; /* #9CA3AF */
+  --color-border: 35 39 51; /* #232733 */
+}

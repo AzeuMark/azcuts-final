@@ -485,3 +485,73 @@ auth (JWT + httpOnly refresh cookie), role-based access, inventory, scheduling +
 **Run:** `pnpm install` then `npm run dev` (from `/server`). Seed with `node seed/seed.js`.
 
 **Next:** CLIENT implementation (`/client`) per `CLIENT_PLAN.md` — Vite + React + Tailwind (v3) + pnpm, starting at client Phase 0.
+
+
+---
+
+## CLIENT
+
+> React client per `CLIENT_PLAN.md`. Built with the **impeccable** + **frontend-design** skills (workspace `.kiro/skills`). Design context captured up front in root **`PRODUCT.md`** (register: product; platform: web) and **`DESIGN.md`** (tokens, type, components, motion) so every phase stays on-brand and accurate.
+
+### Phase 0 — Skeleton & design system  ✅ (2026-07-22)
+
+**Goal:** a runnable Vite + React + Tailwind client — design system, providers, routing, app shell, base UI kit, Axios layer, and the brand logo — with the dev server on port 3000.
+
+**What was built**
+- **Project scaffold (Vite + React, manual)**
+  - `package.json` (scripts `dev`/`build`/`preview`; deps per §3), `vite.config.js` — **dev port pinned to 3000 with `strictPort`** (matches server `CLIENT_ORIGIN`) + `@` → `src` alias, `.env` / `.env.example` (`VITE_API_URL`, `VITE_SOCKET_URL`), `.gitignore`.
+  - `index.html` at the client root: favicon → `/assets/website-logo.png`, meta/theme-color, and the **no-flash theme bootstrap** inline script (applies the `dark` class from `localStorage('az-theme')` or OS preference before paint).
+  - `pnpm-workspace.yaml` with `allowBuilds: { esbuild: true }` — required so pnpm 11 runs esbuild's install script (see Notes).
+- **Tailwind CSS v3** (`tailwindcss@3.4.17`) — `darkMode: 'class'`, content globs, `@tailwindcss/forms` (class strategy). Tokens: brand `#4F46E5`/hover `#4338CA`, accent `#14B8A6`, semantic (success/warning/danger/info), theme-flipping surface/text/border via CSS variables, `md/xl/2xl` radii, a **semantic z-index scale** (dropdown→tooltip), soft shadows, and `fade-in`/`scale-in`/`slide-in-left`/`slide-in-right` keyframes. `postcss.config.js` wires tailwind + autoprefixer.
+- **Design-system foundations** — `styles/theme.css` (light/dark tokens as RGB channels for `rgb(var() / <alpha>)`), `styles/globals.css` (`@tailwind` layers + base: themed body, default border color, focus-visible ring, themed scrollbars, `prefers-reduced-motion` guard). Font: self-hosted **`@fontsource-variable/inter`**.
+- **Data/config layer** — `config/axios.js`: instance with `withCredentials`, in-memory access token, request interceptor (Bearer), response interceptor (**silent `/auth/refresh` once on 401** then replay; `onAuthFailure` subscription for logout), `getApiErrorMessage`. `config/queryClient.js` (React Query defaults). Eight thin API wrappers in `api/*` mirroring every server route, each resolving the `{ success, message, data }` envelope.
+- **Contexts + hooks** — `ThemeContext` (toggle + persist + OS-follow-until-chosen, fully working), `AuthContext` (silent-refresh bootstrap → `/auth/me`, `login`/`register`/`logout`/`refreshUser`, wired to `onAuthFailure`), `SocketContext` (single Socket.io connection opened while authenticated, ready for Phase 10). Hooks: `useAuth`, `useTheme`, `useSocketEvent`.
+- **UI kit** (`components/ui`, Tailwind-styled, accessible, theme-aware): `Button` (+`buttonVariants`), `Input`, `Select`, `Textarea`, `Card*`, `Badge`, `Modal` (portal — never clipped), `ConfirmDialog`, `Table*`, `Pagination`, `Tabs`, `Spinner`, `Skeleton`, `EmptyState`, `ThemeToggle`, `index.js` barrel. Plus `Logo`, `StatusBadge` (lifecycle pill w/ label, never color-only), `RoleGate`, `ProtectedRoute` (auth + role gate), `DataTable` (loading/empty/pagination), `PageHeader`, `PagePlaceholder`.
+- **App shell + routing** — `layout/`: `PublicNavbar`, role-aware `Sidebar` (`navConfig`), `Topbar` (theme toggle, notifications, user menu + sign-out), `DashboardShell` (fixed sidebar / mobile drawer + sticky topbar + `<Outlet/>`), `AuthShell`. `App.jsx` implements the full route map (§2.1): public (`/`, `/login`, `/register`, `/maintenance`), role-gated `/app`, `/staff`, `/admin` portals sharing `DashboardShell`, and a `*` 404. `main.jsx` wraps everything in QueryClient → Theme → Router → Auth → Socket providers + a themed `react-hot-toast` `Toaster`.
+- **Pages** — provisional **Landing** hero, **Login**/**Register** (auth shell), **Maintenance**, **NotFound** (all polished), plus 13 portal placeholders (`PagePlaceholder`) so every route renders intentionally.
+- **Branding** — `templates/website-logo.png` copied to `client/public/assets/website-logo.png`; wired into navbar, topbar, auth/landing/404, and the favicon.
+
+**Dependencies installed** (via pnpm)
+- Runtime: react, react-dom (18.3.1), react-router-dom (6), axios, @tanstack/react-query (5), socket.io-client (4), react-hook-form, recharts, html2canvas, dayjs, react-hot-toast, lucide-react, clsx, @fontsource-variable/inter.
+- Dev: vite (5.4), @vitejs/plugin-react, tailwindcss (3.4.17), postcss, autoprefixer, @tailwindcss/forms, @types/react(-dom).
+
+**Definition of Done — verified**
+- `npm run build` → **success**, 1759 modules, Tailwind CSS emitted (24.7 kB), Inter woff2 subsets bundled, no errors. ✅
+- `npm run dev` → Vite serves on **http://localhost:3000/** (strictPort, no fallback). ✅
+- `GET /` → **200**; HTML contains the `/assets/website-logo.png` favicon, the `az-theme` no-flash script, `#root`, and the `/src/main.jsx` entry. ✅
+- `GET /assets/website-logo.png` → **200 `image/png`** (logo displays). ✅
+- `GET /src/main.jsx` and `/src/styles/globals.css` → **200** (JSX + Tailwind pipeline compile). ✅
+- Theme system: `dark`-class strategy + persisted toggle + no-flash bootstrap implemented and building; empty routes render via the shell. ✅
+
+**Notes & decisions**
+- **pnpm 11 build-script gate:** pnpm 11 removed `onlyBuiltDependencies`/the `package.json` `pnpm` field and defaults `strictDepBuilds` to true, so a blocked build script is now a hard error. Fixed by allowlisting esbuild in **`pnpm-workspace.yaml`** (`allowBuilds: { esbuild: true }`) — the documented v11 home. (Verified against the pnpm v10→v11 migration notes.)
+- **Token naming:** semantic color tokens are `text-ink` / `text-muted` / `bg-app` / `bg-surface` / `bg-surface-2` / `border-line` — deliberately **not** `text-base` (which would collide with Tailwind's built-in font-size utility).
+- **Palette/type = identity preservation:** honored CLIENT_PLAN's committed indigo/teal palette and Inter (permitted for the product register) rather than generating a new brand color — accuracy over novelty.
+- **Logo copied, not moved:** kept the original at `templates/website-logo.png` as a non-destructive source; the client serves its own copy.
+- **Provisional pages:** Landing is a clean placeholder hero (full landing = Phase 2); Login/Register are shells (forms = Phase 1); AuthContext/SocketContext are functional but their UI/real-time wiring lands in Phases 1 and 10. All are intentionally scaffolded so the skeleton looks finished, per the impeccable product register.
+- **Skill update available:** the impeccable skill reports a newer version (v4.0.0-alpha.10); it applies to a future session and did not affect this work.
+
+**Files created** (client)
+```
+client/package.json  pnpm-workspace.yaml  vite.config.js  tailwind.config.js  postcss.config.js
+client/index.html  .env  .env.example  .gitignore
+client/public/assets/website-logo.png
+client/src/main.jsx  App.jsx
+client/src/styles/theme.css  globals.css
+client/src/config/axios.js  queryClient.js
+client/src/context/ThemeContext.jsx  AuthContext.jsx  SocketContext.jsx
+client/src/hooks/useAuth.js  useTheme.js  useSocketEvent.js
+client/src/api/auth.api.js  user.api.js  appointment.api.js  staff.api.js  admin.api.js  inventory.api.js  analytics.api.js  settings.api.js
+client/src/utils/constants.js  formatMoney.js  datetime.js  receiptPng.js  cn.js
+client/src/components/ui/{Button,Input,Select,Textarea,Card,Badge,Modal,ConfirmDialog,Table,Pagination,Tabs,Spinner,Skeleton,EmptyState,ThemeToggle,index}.js(x)
+client/src/components/{Logo,StatusBadge,RoleGate,ProtectedRoute,DataTable,PageHeader,PagePlaceholder}.jsx
+client/src/components/layout/{PublicNavbar,Sidebar,Topbar,DashboardShell,AuthShell}.jsx  navConfig.js
+client/src/pages/public/{Landing,Login,Register,Maintenance}.jsx
+client/src/pages/user/{BookWizard,History,Settings}.jsx
+client/src/pages/staff/{Dashboard,History,Settings}.jsx
+client/src/pages/admin/{Dashboard,StaffHistory,UserHistory,Analytics,UserManager,Inventory,SystemSettings}.jsx
+client/src/pages/NotFound.jsx
+```
+**Also created (repo root):** `PRODUCT.md`, `DESIGN.md` (impeccable design context).
+
+**Run:** `pnpm install` then `npm run dev` (from `/client`) → http://localhost:3000.

@@ -1,0 +1,5 @@
+# pnpm 11 reads build-script permissions here (the old package.json "pnpm" field
+# and onlyBuiltDependencies were removed; allowBuilds is the replacement and uses
+# a map). esbuild ships a prebuilt platform binary its install script wires up; Vite needs it.
+allowBuilds:
+  esbuild: true

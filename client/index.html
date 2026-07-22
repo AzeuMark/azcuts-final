@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/assets/website-logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4F46E5" />
+    <meta
+      name="description"
+      content="AzCuts — Sharp looks, effortless booking. Book a haircut or salon service, pick your barber, and get a receipt in minutes."
+    />
+    <title>AzCuts — Barber Shop &amp; Salon</title>
+
+    <!--
+      No-flash theme bootstrap. Runs before paint so the correct theme is set
+      on <html> before React mounts. Reads the saved preference (az-theme),
+      falling back to the OS preference on first visit. Mirrors ThemeContext.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('az-theme');
+          var prefersDark =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme = stored || (prefersDark ? 'dark' : 'light');
+          var root = document.documentElement;
+          if (theme === 'dark') root.classList.add('dark');
+          else root.classList.remove('dark');
+          root.style.colorScheme = theme;
+        } catch (e) {
+          /* localStorage unavailable — default to light */
+        }
+      })();
+    </script>
+  </head>
+  <body class="h-full">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
