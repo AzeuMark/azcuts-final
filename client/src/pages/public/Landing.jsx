@@ -15,6 +15,9 @@ import { serverAsset } from '../../utils/serverAsset';
 import cn from '../../utils/cn';
 import lisaImg from './images/lisa.jpg';
 import mrbeastImg from './images/mrbeast.png';
+import landingBackgroundImg from './images/landing-background.avif'
+import azeumarkImg from './images/azeumark.jpg'
+
 
 // Where the "Book" CTAs go: guests register first; signed-in users land in their portal.
 const BOOK_BY_ROLE = { user: '/app/book', staff: '/staff', admin: '/admin' };
