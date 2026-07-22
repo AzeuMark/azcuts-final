@@ -1,0 +1,6 @@
+[
+  { "name": "Hot Towel Treatment", "price": 50, "durationMinutes": 10, "isActive": true },
+  { "name": "Hair Wash & Blow-dry", "price": 60, "durationMinutes": 15, "isActive": true },
+  { "name": "Scalp Massage", "price": 120, "durationMinutes": 20, "isActive": true },
+  { "name": "Bleaching", "price": 500, "durationMinutes": 60, "isActive": true }
+]

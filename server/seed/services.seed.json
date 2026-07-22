@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Classic Haircut",
+    "category": "haircut",
+    "description": "Timeless scissor cut tailored to your style, finished with a wash and blow-dry.",
+    "price": 150,
+    "durationMinutes": 30,
+    "isActive": true
+  },
+  {
+    "name": "Skin Fade",
+    "category": "haircut",
+    "description": "Sharp, gradual fade down to the skin with a clean, modern finish.",
+    "price": 200,
+    "durationMinutes": 45,
+    "isActive": true
+  },
+  {
+    "name": "Beard Trim & Shape",
+    "category": "haircut",
+    "description": "Precision beard lineup and shaping with hot towel and oil.",
+    "price": 100,
+    "durationMinutes": 20,
+    "isActive": true
+  },
+  {
+    "name": "Hair Color",
+    "category": "salon",
+    "description": "Full-head permanent color with a shade consultation.",
+    "price": 800,
+    "durationMinutes": 90,
+    "isActive": true
+  },
+  {
+    "name": "Hair Rebond",
+    "category": "salon",
+    "description": "Rebonding treatment for permanently straight, smooth hair.",
+    "price": 1500,
+    "durationMinutes": 180,
+    "isActive": true
+  }
+]

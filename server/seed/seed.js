@@ -8,6 +8,8 @@ const connectDB = require('../config/db');
 const logger = require('../utils/logger');
 const Settings = require('../models/Settings');
 const User = require('../models/User');
+const Service = require('../models/Service');
+const Extra = require('../models/Extra');
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(path.join(__dirname, file), 'utf-8'));
@@ -46,10 +48,27 @@ async function seedAdmin() {
   logger.info(`Seeded admin account: ${email} (password: Admin@123)`);
 }
 
+// Upsert by name so re-running the seeder never creates duplicates.
+async function seedCollection(Model, file, label) {
+  const items = readJson(file);
+  let inserted = 0;
+  for (const item of items) {
+    const result = await Model.updateOne(
+      { name: item.name },
+      { $setOnInsert: item },
+      { upsert: true }
+    );
+    if (result.upsertedCount) inserted += 1;
+  }
+  logger.info(`Seeded ${label}: ${inserted} new, ${items.length - inserted} already present`);
+}
+
 async function run() {
   await connectDB();
   await seedSettings();
   await seedAdmin();
+  await seedCollection(Service, 'services.seed.json', 'services');
+  await seedCollection(Extra, 'extras.seed.json', 'extras');
   await mongoose.connection.close();
   logger.info('Seeding complete.');
   process.exit(0);

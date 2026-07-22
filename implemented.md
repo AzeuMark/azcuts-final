@@ -110,3 +110,49 @@ server/routes/auth.routes.js
 server/seed/admin.seed.json  settings.seed.json  seed.js
 ```
 **Files changed:** `server/routes/index.js` (mount /auth), `server/config/bootstrap.js` (seed Settings), `server/server.js` (connect DB before bootstrap), `server/app.js` (use error middleware), `server/package.json` (seed script).
+
+---
+
+### Phase 2 — Inventory  ✅ (2026-07-22)
+
+**Goal:** admin-managed services + extras (with image upload) and public read endpoints for the landing page / booking flow.
+
+**What was built**
+- **Middleware**
+  - `middleware/upload.js` — Multer disk storage into `/uploads` with random hex filenames (original extension kept); image-only mime filter (jpeg/png/webp/gif); 5 MB size cap.
+  - `middleware/optionalAuth.js` — attaches `req.user` when a valid Bearer token is present but never rejects; lets public GETs return richer data to admins.
+  - `middleware/error.js` — now also maps `MulterError` (e.g. `LIMIT_FILE_SIZE` → 400).
+- **Validation** — `validators/inventory.validator.js` (create/update rules for services + extras) with `toFloat`/`toInt`/`toBoolean` coercion so multipart string fields become real types.
+- **Controller** — `controllers/inventory.controller.js`
+  - Services: `list`, `getOne`, `create`, `update`, `delete`. Images stored as `/uploads/<file>`; update replaces + deletes the old file; delete cleans up the local file.
+  - Extras: `list`, `getOne`, `create`, `update`, `delete`.
+  - **Visibility rule:** anonymous/non-admin callers only ever see `isActive: true`; admins see everything and may filter by `?isActive` / `?category`.
+- **Routes** — `routes/inventory.routes.js` mounted at `/api`:
+  - `GET /services`, `GET /services/:id`, `GET /extras`, `GET /extras/:id` → `optionalAuth` (public, active-only).
+  - `POST/PUT/DELETE` → `auth` + `requireRole('admin')`; service `POST`/`PUT` run `upload.single('image')`.
+- **Seeds** — `seed/services.seed.json` (5 services), `seed/extras.seed.json` (4 extras); `seed/seed.js` extended with an idempotent upsert-by-name loader (`npm run seed`).
+
+**Definition of Done — verified** (temporary Node fetch test, since removed)
+- Public `GET /services` → **200**, 5 active services; admin `GET /services` → all. ✅
+- Create service via **JSON** → **201**, string `price:"123.5"` coerced to number `123.5`, `durationMinutes` to int. ✅
+- Create service via **multipart + image** → **201**, `image=/uploads/<hash>.png`; fetching that URL → **200** `image/png` (static serving works). ✅
+- Update `isActive=false` → **200**; public `GET /:id` then → **404**; public list excludes it. ✅
+- Create extra → **201**. ✅
+- Non-admin (customer) create → **403**; missing price → **422**. ✅
+- Delete service → **200** (and its uploaded file is removed).
+- Test artifacts cleaned from the DB afterward (back to 5 services / 4 extras / admin / settings).
+
+**Notes & decisions**
+- `GET /settings/public` (shopInfo + services for the landing page) belongs to **Phase 8 — System settings**, so it is intentionally not implemented yet; the public `GET /services` already satisfies the Phase 2 DoD.
+- `DELETE` is a hard delete per the API contract. Once appointments exist (Phase 3+), the recommended way to retire an item is `isActive:false` (soft-hide) to preserve history; hard delete stays available for admin cleanup.
+- Endpoints accept both JSON and multipart bodies, so the admin UI can create/update a service with or without an image.
+
+**Files created**
+```
+server/middleware/upload.js  optionalAuth.js
+server/validators/inventory.validator.js
+server/controllers/inventory.controller.js
+server/routes/inventory.routes.js
+server/seed/services.seed.json  extras.seed.json
+```
+**Files changed:** `server/middleware/error.js` (MulterError), `server/routes/index.js` (mount inventory), `server/seed/seed.js` (seed services + extras).
