@@ -99,6 +99,11 @@ export default {
           '0%': { backgroundPosition: '0 0' },
           '100%': { backgroundPosition: '34px 0' },
         },
+        // Gentle attention ripple for the chat launcher bubble.
+        ripple: {
+          '0%': { transform: 'scale(1)', opacity: '0.45' },
+          '100%': { transform: 'scale(2.2)', opacity: '0' },
+        },
         // Horizontal auto-scroll for overflowing text (e.g. long account names).
         marquee: {
           '0%': { transform: 'translateX(0)' },
@@ -113,6 +118,7 @@ export default {
         'fade-in-up': 'fade-in-up 650ms cubic-bezier(0.16, 1, 0.3, 1) both',
         barber: 'barber 2.4s linear infinite',
         marquee: 'marquee 5s linear infinite alternate',
+        ripple: 'ripple 2.4s ease-out infinite',
       },
     },
   },

@@ -9,6 +9,16 @@ import cn from '../utils/cn';
 // Azeu AI brand mark (copied into client/public/assets; also lives in server/ai).
 const AZEU_AI_LOGO = '/assets/aichatbot-logo.png';
 
+const BUBBLE = 48; // launcher size (h-12 / w-12)
+const EDGE = 16; // viewport margin
+const GAP = 12; // space between the panel and the launcher bubble
+const TOP_LIMIT = 72; // keep the widget below the 64px sticky navbar
+const DESKTOP_MQ = '(min-width: 768px)'; // dragging is desktop-only
+const POS_KEY = 'az-chat-pos';
+const SEEN_KEY = 'az-chat-seen';
+
+const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+
 // Role-specific greeting + starter questions. Guests (not signed in) get the
 // customer guide. The SERVER still decides which knowledge prompt to use from
 // the auth token — this only tailors the on-screen copy.
@@ -46,7 +56,6 @@ const GUIDE = {
  * Minimal markdown renderer.
  * Handles the formatting Azeu AI actually emits: **bold**, *italic* / _italic_,
  * `inline code`, bullet lists (-, *), numbered lists (1.), and line breaks.
- * Kept dependency-free and scoped to the chat bubble.
  * ------------------------------------------------------------------------- */
 const INLINE_RE = /(\*\*([^*]+)\*\*|\*([^*\n]+)\*|_([^_\n]+)_|`([^`\n]+)`)/g;
 
@@ -197,19 +206,111 @@ export default function ChatWidget() {
   const [streamIdx, setStreamIdx] = useState(-1);
   const [streamLen, setStreamLen] = useState(0);
 
+  // Dragging (desktop only). `pos` = bubble top-left while closed; `panelPos` =
+  // panel top-left while open. The bubble is derived from panelPos when open, so
+  // the two move together as one connected unit.
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return true;
+    return window.matchMedia(DESKTOP_MQ).matches;
+  });
+  const [pos, setPos] = useState(() => {
+    try {
+      const s = localStorage.getItem(POS_KEY);
+      return s ? JSON.parse(s) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [panelPos, setPanelPos] = useState(null);
+  const [hintOn, setHintOn] = useState(() => {
+    try {
+      return localStorage.getItem(SEEN_KEY) !== '1';
+    } catch {
+      return true;
+    }
+  });
+  const [hintVisible, setHintVisible] = useState(false);
+
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const launcherRef = useRef(null);
+  const dragRef = useRef({ active: false, moved: false, sx: 0, sy: 0, ol: 0, ot: 0 });
+  const panelDrag = useRef({ active: false, sx: 0, sy: 0, ox: 0, oy: 0 });
 
-  // Reset the conversation whenever the effective guide role changes
-  // (e.g. a guest logs in, or a user logs out) so greeting + context match.
+  // Panel dimensions are fixed by CSS (h-[min(70vh,32rem)], w capped at 24rem),
+  // so we can compute them without measuring the DOM.
+  const panelWH = () => ({
+    w: Math.min(384, window.innerWidth - 2 * EDGE),
+    h: Math.min(Math.round(window.innerHeight * 0.7), 512),
+  });
+
+  // Where the bubble sits while closed (dragged position on desktop, else docked).
+  const bubbleBase = () => {
+    if (isDesktop && pos) return { left: pos.x, top: pos.y };
+    return {
+      left: window.innerWidth - BUBBLE - EDGE,
+      top: window.innerHeight - BUBBLE - EDGE,
+    };
+  };
+
+  const clampBubble = (x, y) => ({
+    x: clamp(x, EDGE, Math.max(EDGE, window.innerWidth - BUBBLE - EDGE)),
+    y: clamp(y, TOP_LIMIT, Math.max(TOP_LIMIT, window.innerHeight - BUBBLE - EDGE)),
+  });
+
+  // Keep the whole open unit (panel + gap + bubble below it) on-screen, below navbar.
+  const clampUnit = (x, y) => {
+    const { w, h } = panelWH();
+    const unitH = h + GAP + BUBBLE;
+    return {
+      x: clamp(x, EDGE, Math.max(EDGE, window.innerWidth - w - EDGE)),
+      y: clamp(y, TOP_LIMIT, Math.max(TOP_LIMIT, window.innerHeight - unitH - EDGE)),
+    };
+  };
+
+  // Bubble position while open = derived from the panel (sits below its right edge).
+  const derivedBubble = () => {
+    const { w, h } = panelWH();
+    return { x: panelPos.x + w - BUBBLE, y: panelPos.y + h + GAP };
+  };
+
+  const computeOpenPos = () => {
+    const base = bubbleBase();
+    const { w, h } = panelWH();
+    return clampUnit(base.left + BUBBLE - w, base.top - GAP - h);
+  };
+
+  const toggleOpen = () => {
+    if (open) {
+      // Closing: leave the bubble where it currently sits (desktop only).
+      if (isDesktop && panelPos) {
+        const { w, h } = panelWH();
+        setPos(clampBubble(panelPos.x + w - BUBBLE, panelPos.y + h + GAP));
+      }
+      setOpen(false);
+      return;
+    }
+    setPanelPos(computeOpenPos());
+    setOpen(true);
+  };
+
+  // Reset the conversation whenever the effective guide role changes.
   useEffect(() => {
     setMessages([{ role: 'assistant', content: guide.greeting }]);
     setStreamIdx(-1);
     setStreamLen(0);
   }, [guideRole, guide.greeting]);
 
-  // Drive the typewriter reveal. Runs while a message is streaming; finishes fast
-  // regardless of reply length so it always feels like a live response.
+  // Track desktop vs mobile for enabling/disabling dragging.
+  useEffect(() => {
+    if (!window.matchMedia) return undefined;
+    const mq = window.matchMedia(DESKTOP_MQ);
+    const onChange = (e) => setIsDesktop(e.matches);
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
+  }, []);
+
+  // Drive the typewriter reveal (finishes fast regardless of reply length).
   useEffect(() => {
     if (streamIdx < 0) return undefined;
     const full = messages[streamIdx]?.content ?? '';
@@ -222,11 +323,9 @@ export default function ChatWidget() {
     return () => clearTimeout(id);
   }, [streamIdx, streamLen, messages]);
 
-  // Keep the latest content in view (also follows the streaming text as it grows).
+  // Keep the latest content in view (follows the streaming text as it grows).
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, sending, open, streamLen]);
 
   // Focus the composer when the panel opens.
@@ -237,6 +336,103 @@ export default function ChatWidget() {
     }
     return undefined;
   }, [open]);
+
+  // Persist a dragged bubble position + keep it on-screen across resizes.
+  useEffect(() => {
+    try {
+      if (pos) localStorage.setItem(POS_KEY, JSON.stringify(pos));
+    } catch {
+      /* storage unavailable */
+    }
+  }, [pos]);
+
+  useEffect(() => {
+    const onResize = () => setPos((p) => (p ? clampBubble(p.x, p.y) : p));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the open panel fully visible (below navbar) when the window resizes.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onResize = () => setPanelPos((p) => (p ? clampUnit(p.x, p.y) : p));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Periodic "Need help?" nudge: show ~3.5s, hide ~4.5s, repeat (while closed).
+  useEffect(() => {
+    if (open || !hintOn) {
+      setHintVisible(false);
+      return undefined;
+    }
+    let timer;
+    const schedule = (show) => {
+      setHintVisible(show);
+      timer = setTimeout(() => schedule(!show), show ? 3500 : 4500);
+    };
+    timer = setTimeout(() => schedule(true), 1200);
+    return () => clearTimeout(timer);
+  }, [open, hintOn]);
+
+  // Once the chat has been opened, stop nudging (remembered across visits).
+  useEffect(() => {
+    if (open && hintOn) {
+      setHintOn(false);
+      try {
+        localStorage.setItem(SEEN_KEY, '1');
+      } catch {
+        /* storage unavailable */
+      }
+    }
+  }, [open, hintOn]);
+
+  /* ---- Bubble drag (desktop only, while closed) + click-to-toggle ---- */
+  const onPointerDown = (e) => {
+    const rect = launcherRef.current?.getBoundingClientRect();
+    dragRef.current = {
+      active: true,
+      moved: false,
+      sx: e.clientX,
+      sy: e.clientY,
+      ol: rect?.left ?? 0,
+      ot: rect?.top ?? 0,
+    };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    const d = dragRef.current;
+    if (!d.active || !isDesktop || open) return; // no drag on mobile or when open
+    const dx = e.clientX - d.sx;
+    const dy = e.clientY - d.sy;
+    if (!d.moved && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+    d.moved = true;
+    setPos(clampBubble(d.ol + dx, d.ot + dy));
+  };
+  const onPointerUp = (e) => {
+    const d = dragRef.current;
+    d.active = false;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    if (!d.moved) toggleOpen(); // treated as a click
+  };
+
+  /* ---- Panel drag via the header (desktop only) ---- */
+  const onHeaderPointerDown = (e) => {
+    if (!isDesktop || !panelPos) return;
+    panelDrag.current = { active: true, sx: e.clientX, sy: e.clientY, ox: panelPos.x, oy: panelPos.y };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onHeaderPointerMove = (e) => {
+    const d = panelDrag.current;
+    if (!d.active) return;
+    setPanelPos(clampUnit(d.ox + (e.clientX - d.sx), d.oy + (e.clientY - d.sy)));
+  };
+  const onHeaderPointerUp = (e) => {
+    panelDrag.current.active = false;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+  };
 
   const canSend = input.trim().length > 0 && !sending;
 
@@ -250,10 +446,9 @@ export default function ChatWidget() {
     setSending(true);
 
     try {
-      // Send only the real user/assistant turns (server prepends the system prompt).
       const { data } = await chatbotApi.send(withUser);
       const reply = data?.reply || "Sorry, I couldn't come up with a reply. Please try again.";
-      const assistantIdx = withUser.length; // position the assistant msg will occupy
+      const assistantIdx = withUser.length;
       setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
       setStreamIdx(assistantIdx);
       setStreamLen(0);
@@ -281,23 +476,45 @@ export default function ChatWidget() {
     }
   }
 
-  // Only show starter chips before the visitor has asked anything.
   const showSuggestions = useMemo(
     () => messages.filter((m) => m.role === 'user').length === 0,
     [messages]
   );
 
+  // Launcher (bubble) placement: follows the panel when open; dragged/docked when closed.
+  let launcherStyle;
+  if (open && panelPos) {
+    const b = derivedBubble();
+    launcherStyle = { left: b.x, top: b.y, right: 'auto', bottom: 'auto' };
+  } else if (isDesktop && pos) {
+    launcherStyle = { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto' };
+  }
+
+  const base = bubbleBase();
+  const hintOnRight = base.left + BUBBLE / 2 > window.innerWidth / 2; // bubble on right → pill on its left
+
   return (
-    <div className="fixed bottom-4 right-4 z-sticky flex flex-col items-end sm:bottom-6 sm:right-6">
-      {/* Chat panel */}
-      {open && (
+    <>
+      {/* Chat panel — draggable via header (desktop), always clamped on-screen */}
+      {open && panelPos && (
         <div
           role="dialog"
           aria-label="Azeu AI assistant"
-          className="mb-3 flex h-[min(70vh,32rem)] w-[calc(100vw-2rem)] max-w-sm origin-bottom-right animate-scale-in flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-pop"
+          style={{ left: panelPos.x, top: panelPos.y }}
+          className="fixed z-sticky flex h-[min(70vh,32rem)] w-[calc(100vw-2rem)] max-w-sm animate-scale-in flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-pop"
         >
-          {/* Header */}
-          <div className="flex items-center gap-3 border-b border-line bg-gradient-to-r from-brand to-accent px-4 py-3 text-white">
+          {/* Header — plain brand color; drag handle to move the panel */}
+          <div
+            onPointerDown={onHeaderPointerDown}
+            onPointerMove={onHeaderPointerMove}
+            onPointerUp={onHeaderPointerUp}
+            onPointerCancel={onHeaderPointerUp}
+            style={isDesktop ? { touchAction: 'none' } : undefined}
+            className={cn(
+              'flex select-none items-center gap-3 border-b border-line bg-brand px-4 py-3 text-white',
+              isDesktop && 'cursor-move'
+            )}
+          >
             <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-white/20">
               <img
                 src={AZEU_AI_LOGO}
@@ -313,6 +530,7 @@ export default function ChatWidget() {
             <button
               type="button"
               onClick={() => setOpen(false)}
+              onPointerDown={(e) => e.stopPropagation()}
               aria-label="Close chat"
               className="rounded-md p-1.5 text-white/90 transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             >
@@ -402,28 +620,82 @@ export default function ChatWidget() {
         </div>
       )}
 
-      {/* Launcher bubble — shows the Azeu AI logo when closed, an X when open. */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label={open ? 'Close Azeu AI chat' : 'Open Azeu AI chat'}
-        aria-expanded={open}
+      {/* Launcher — connected to the panel; drag when closed (desktop only) */}
+      <div
+        ref={launcherRef}
+        style={launcherStyle}
         className={cn(
-          'flex h-14 w-14 items-center justify-center overflow-hidden rounded-full shadow-pop transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-app',
-          open ? 'bg-brand text-brand-fg' : 'bg-white'
+          'fixed z-sticky h-12 w-12',
+          !launcherStyle && 'bottom-4 right-4 sm:bottom-6 sm:right-6'
         )}
       >
-        {open ? (
-          <X className="h-6 w-6" />
-        ) : (
-          <img
-            src={AZEU_AI_LOGO}
-            alt="Azeu AI"
-            className="h-full w-full object-cover"
-            draggable="false"
-          />
+        {/* "Need help?" nudge — appears then hides on a loop while closed */}
+        {!open && hintOn && (
+          <button
+            type="button"
+            onClick={toggleOpen}
+            aria-hidden={!hintVisible}
+            tabIndex={hintVisible ? 0 : -1}
+            className={cn(
+              'absolute top-0 whitespace-nowrap rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-medium text-ink shadow-pop transition-all duration-300 ease-out hover:text-brand',
+              hintOnRight ? 'right-full mr-2.5' : 'left-full ml-2.5',
+              hintVisible
+                ? 'opacity-100'
+                : `pointer-events-none opacity-0 ${hintOnRight ? 'translate-x-1' : '-translate-x-1'}`
+            )}
+          >
+            Need help?
+          </button>
         )}
-      </button>
-    </div>
+
+        {/* Attention ripple (behind the bubble, only while closed) */}
+        {!open && (
+          <>
+            <span className="pointer-events-none absolute inset-0 rounded-full bg-brand/40 animate-ripple" />
+            <span
+              className="pointer-events-none absolute inset-0 rounded-full bg-brand/30 animate-ripple"
+              style={{ animationDelay: '1.2s' }}
+            />
+          </>
+        )}
+
+        <button
+          type="button"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={(e) => {
+            dragRef.current.active = false;
+            e.currentTarget.releasePointerCapture?.(e.pointerId);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              toggleOpen();
+            }
+          }}
+          aria-label={open ? 'Close Azeu AI chat' : 'Open Azeu AI chat'}
+          aria-expanded={open}
+          style={{ touchAction: 'none' }}
+          className={cn(
+            'relative flex h-12 w-12 select-none items-center justify-center overflow-hidden rounded-full shadow-pop transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-app',
+            open
+              ? 'cursor-pointer bg-brand text-brand-fg'
+              : cn('bg-white', isDesktop ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer')
+          )}
+        >
+          {open ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <img
+              src={AZEU_AI_LOGO}
+              alt="Azeu AI"
+              className="h-full w-full object-cover"
+              draggable="false"
+            />
+          )}
+        </button>
+      </div>
+    </>
   );
 }
