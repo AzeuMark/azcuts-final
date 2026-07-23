@@ -64,6 +64,7 @@ const createService = asyncHandler(async (req, res) => {
   });
 
   if (req.file) applyImage(service, req.file);
+  else if (req.body.image) service.image = req.body.image; // external image URL
   await service.save(); // assigns _id (needed to build the image URL)
 
   if (req.file) {
@@ -90,6 +91,12 @@ const updateService = asyncHandler(async (req, res) => {
     deleteUploadIfLocal(service.image); // clean up any legacy disk file
     applyImage(service, req.file);
     service.image = dbImageUrl(service);
+  } else if (req.body.image) {
+    // Switch to an external image URL: drop any DB-stored bytes + legacy file.
+    deleteUploadIfLocal(service.image);
+    service.image = req.body.image;
+    service.imageData = undefined;
+    service.imageType = undefined;
   }
 
   await service.save();

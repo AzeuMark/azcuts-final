@@ -4,13 +4,13 @@ import toast from 'react-hot-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './ui/Card';
 import Input from './ui/Input';
 import Select from './ui/Select';
-import Button, { buttonVariants } from './ui/Button';
-import Avatar from './ui/Avatar';
+import Button from './ui/Button';
+import ImagePicker from './ui/ImagePicker';
 import { useAuth } from '../hooks/useAuth';
 import { useSettingsPublic } from '../hooks/useSettingsPublic';
 import userApi from '../api/user.api';
 import { getApiErrorMessage } from '../config/axios';
-import cn from '../utils/cn';
+import { serverAsset } from '../utils/serverAsset';
 
 export default function AccountSettings({ showNickname = false }) {
   const { user, setUser } = useAuth();
@@ -62,7 +62,8 @@ export default function AccountSettings({ showNickname = false }) {
     onError: (e) => toast.error(getApiErrorMessage(e, 'Could not change password')),
   });
 
-  const avatarMutation = useMutation({
+  // Profile photo can be a file upload or an external image URL.
+  const avatarFileMutation = useMutation({
     mutationFn: (file) => userApi.uploadAvatar(file),
     onSuccess: (res) => {
       if (res?.data?.user) setUser(res.data.user);
@@ -71,19 +72,20 @@ export default function AccountSettings({ showNickname = false }) {
     onError: (e) => toast.error(getApiErrorMessage(e, 'Could not update photo')),
   });
 
-  const onAvatarChange = (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = ''; // allow re-selecting the same file
-    if (!file) return;
-    if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
-      toast.error('Only PNG, JPG, or JPEG images are allowed');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be smaller than 5MB');
-      return;
-    }
-    avatarMutation.mutate(file);
+  const avatarUrlMutation = useMutation({
+    mutationFn: (url) => userApi.setAvatarUrl(url),
+    onSuccess: (res) => {
+      if (res?.data?.user) setUser(res.data.user);
+      toast.success('Profile photo updated');
+    },
+    onError: (e) => toast.error(getApiErrorMessage(e, 'Could not update photo')),
+  });
+
+  const avatarBusy = avatarFileMutation.isPending || avatarUrlMutation.isPending;
+
+  const handleAvatarChange = ({ file, url }) => {
+    if (file) avatarFileMutation.mutate(file);
+    else if (url) avatarUrlMutation.mutate(url);
   };
 
   return (
@@ -96,27 +98,21 @@ export default function AccountSettings({ showNickname = false }) {
         </CardHeader>
         <form onSubmit={profileForm.handleSubmit((v) => profileMutation.mutate(v))} noValidate>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4 border-b border-line pb-4">
-              <Avatar src={user?.avatar} name={user?.fullName} className="h-16 w-16 text-lg" />
-              <div className="min-w-0">
-                <label
-                  className={cn(
-                    buttonVariants({ variant: 'outline', size: 'sm' }),
-                    'cursor-pointer',
-                    avatarMutation.isPending && 'pointer-events-none opacity-60'
-                  )}
-                >
-                  {avatarMutation.isPending ? 'Uploading…' : 'Change photo'}
-                  <input
-                    type="file"
-                    accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                    className="hidden"
-                    onChange={onAvatarChange}
-                    disabled={avatarMutation.isPending}
-                  />
-                </label>
-                <p className="mt-1.5 text-xs text-muted">PNG, JPG, or JPEG · max 5MB.</p>
-              </div>
+            <div className="border-b border-line pb-4">
+              <p className="mb-2 text-sm font-medium text-ink">Profile photo</p>
+              <ImagePicker
+                preview={serverAsset(user?.avatar)}
+                aspect="square"
+                rounded="full"
+                className="max-w-[220px]"
+                disabled={avatarBusy}
+                onChange={handleAvatarChange}
+                hint={
+                  avatarBusy
+                    ? 'Updating photo…'
+                    : 'PNG, JPG, or JPEG · max 5MB. A square image looks best.'
+                }
+              />
             </div>
             <Input
               label="Full name"

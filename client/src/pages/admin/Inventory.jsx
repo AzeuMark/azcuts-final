@@ -13,6 +13,7 @@ import Textarea from '../../components/ui/Textarea';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import ImagePicker from '../../components/ui/ImagePicker';
 import { Tabs } from '../../components/ui/Tabs';
 
 import inventoryApi from '../../api/inventory.api';
@@ -191,7 +192,6 @@ function ServiceFormModal({ service, onClose, onSaved }) {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -201,12 +201,12 @@ function ServiceFormModal({ service, onClose, onSaved }) {
       price: service?.price ?? '',
       durationMinutes: service?.durationMinutes ?? 30,
       isActive: service?.isActive ?? true,
-      image: undefined,
     },
   });
 
-  const imageList = watch('image');
-  const previewUrl = imageList?.[0] ? URL.createObjectURL(imageList[0]) : serverAsset(service?.image);
+  // Image selection from the picker: a File (upload), a URL string, or neither
+  // (keep the existing image on edit).
+  const [image, setImage] = useState({ file: null, url: null });
 
   const mutation = useMutation({
     mutationFn: (v) => {
@@ -218,7 +218,8 @@ function ServiceFormModal({ service, onClose, onSaved }) {
         durationMinutes: Number(v.durationMinutes),
         isActive: Boolean(v.isActive),
       };
-      if (v.image?.[0]) payload.image = v.image[0];
+      if (image.file) payload.image = image.file; // → multipart upload
+      else if (image.url) payload.image = image.url; // → stored as an external URL
       return isEdit ? inventoryApi.updateService(service._id, payload) : inventoryApi.createService(payload);
     },
     onSuccess: () => {
@@ -272,30 +273,12 @@ function ServiceFormModal({ service, onClose, onSaved }) {
         <Textarea label="Description" rows={3} {...register('description')} />
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink">Image</label>
-          <div className="flex items-center gap-3">
-            {previewUrl && <img src={previewUrl} alt="" className="h-16 w-16 rounded-lg object-cover ring-1 ring-line" />}
-            <input
-              type="file"
-              accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-              className="block w-full text-sm text-muted file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-fg hover:file:bg-brand-hover"
-              {...register('image', {
-                validate: (files) => {
-                  const f = files?.[0];
-                  if (!f) return true;
-                  if (!['image/png', 'image/jpeg', 'image/jpg'].includes(f.type)) {
-                    return 'Only PNG, JPG, or JPEG images are allowed';
-                  }
-                  if (f.size > 5 * 1024 * 1024) return 'Image must be smaller than 5MB';
-                  return true;
-                },
-              })}
-            />
-          </div>
-          {errors.image?.message ? (
-            <p className="mt-1.5 text-sm text-danger">{errors.image.message}</p>
-          ) : (
-            <p className="mt-1.5 text-xs text-muted">PNG, JPG, or JPEG · max 5MB.</p>
-          )}
+          <ImagePicker
+            preview={serverAsset(service?.image)}
+            aspect="video"
+            onChange={setImage}
+            hint="PNG, JPG, or JPEG · max 5MB. For the best appearance, use a landscape (16:9) image."
+          />
         </div>
         <label className="flex items-center gap-2 text-sm text-ink">
           <input type="checkbox" className="h-4 w-4 rounded border-line text-brand focus:ring-brand" {...register('isActive')} />

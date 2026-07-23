@@ -27,6 +27,7 @@ router.use('/staff', require('./staff.routes')); // Phase 4
 router.use('/admin', require('./admin.routes')); // Phase 6
 router.use('/analytics', require('./analytics.routes')); // Phase 7
 router.use('/settings', require('./settings.routes')); // Phase 8
+router.use('/chatbot', require('./chatbot.routes')); // Azeu AI assistant
 // router.use('/admin', require('./admin.routes'));          // Phase 6
 // router.use('/analytics', require('./analytics.routes'));  // Phase 7
 // router.use('/settings', require('./settings.routes'));    // Phase 8

@@ -55,6 +55,11 @@ const updateProfileRules = [
   body('phone').optional({ values: 'falsy' }).trim(),
   body('address').optional({ values: 'falsy' }).trim(),
   body('nickname').optional({ values: 'falsy' }).trim(),
+  // avatar = an external image URL (file uploads use POST /users/avatar).
+  body('avatar')
+    .optional({ values: 'falsy' })
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Avatar must be a valid http(s) URL'),
 ];
 
 const changePasswordRules = [

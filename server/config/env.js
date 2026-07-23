@@ -36,6 +36,14 @@ const env = {
   // Reversible field encryption (utils/AESCrypt.js) — placeholder key, change later
   AES_SECRET_KEY: process.env.AES_SECRET_KEY || 'azeumark',
 
+  // Groq (powers the "Azeu AI" chatbot). Key stays server-side only — never
+  // sent to the browser. If GROQ_API_KEY is unset the chatbot endpoint returns
+  // a friendly "unavailable" message instead of crashing.
+  GROQ_API_KEY: process.env.GROQ_API_KEY || '',
+  GROQ_MODEL: process.env.GROQ_MODEL || 'qwen/qwen3.6-27b',
+  GROQ_API_URL:
+    process.env.GROQ_API_URL || 'https://api.groq.com/openai/v1/chat/completions',
+
   get isProd() {
     return this.NODE_ENV === 'production';
   },

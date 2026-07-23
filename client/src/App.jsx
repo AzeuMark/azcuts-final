@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import RealtimeBridge from './components/RealtimeBridge';
 import ThemeSync from './components/ThemeSync';
+import ChatWidget from './components/ChatWidget';
 import DashboardShell from './components/layout/DashboardShell';
 import Spinner from './components/ui/Spinner';
 
@@ -42,6 +43,7 @@ export default function App() {
     <>
       <RealtimeBridge />
       <ThemeSync />
+      <ChatWidget />
       <Suspense fallback={<PageFallback />}>
         <Routes>
           {/* Public — login/register happen in the landing slide-in panel */}

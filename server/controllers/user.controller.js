@@ -28,6 +28,14 @@ const updateProfile = asyncHandler(async (req, res) => {
     user.nickname = req.body.nickname;
   }
 
+  // avatar (when present) is an external image URL — switch to it and drop any
+  // DB-stored avatar bytes so the URL becomes the source of truth.
+  if (req.body.avatar !== undefined) {
+    user.avatar = req.body.avatar;
+    user.avatarData = undefined;
+    user.avatarType = undefined;
+  }
+
   ['fullName', 'username', 'address', 'phone', 'email'].forEach((f) => {
     if (req.body[f] !== undefined) user[f] = req.body[f];
   });

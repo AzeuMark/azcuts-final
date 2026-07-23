@@ -23,6 +23,11 @@ const createServiceRules = [
     .toInt(),
   body('description').optional().trim(),
   body('isActive').optional().isBoolean().withMessage('isActive must be boolean').toBoolean(),
+  // `image` as text = an external URL (a file upload arrives via multer, not here).
+  body('image')
+    .optional({ values: 'falsy' })
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Image must be a valid http(s) URL'),
 ];
 
 const updateServiceRules = [
@@ -32,6 +37,10 @@ const updateServiceRules = [
   body('durationMinutes').optional().isInt({ min: 0 }).toInt(),
   body('description').optional().trim(),
   body('isActive').optional().isBoolean().toBoolean(),
+  body('image')
+    .optional({ values: 'falsy' })
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Image must be a valid http(s) URL'),
 ];
 
 const createExtraRules = [

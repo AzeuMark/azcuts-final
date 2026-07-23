@@ -54,7 +54,7 @@ function LoginForm({ onDone }) {
         label="Username or email"
         type="text"
         autoComplete="username"
-        placeholder="you@example.com or your username"
+        placeholder="e.g. juandelacruz"
         leftIcon={<AtSign className="h-4 w-4" />}
         error={errors.identifier?.message}
         {...register('identifier', { required: 'Username or email is required' })}
