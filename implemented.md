@@ -746,3 +746,195 @@ client/src/pages/admin/{Dashboard,UserManager,StaffHistory,UserHistory,Inventory
 client/public/_redirects   client/vercel.json   client/.env.production.example   client/DEPLOYMENT.md
 ```
 **Files changed:** `client/src/App.jsx` (lazy routes + RealtimeBridge), `client/src/components/layout/{DashboardShell,Topbar}.jsx` (maintenance gate, shift toggle, bell), `client/src/pages/user/History.jsx` (auto-rate prompt). Server: `controllers/settings.controller.js` (public nicknames).
+
+---
+
+# ADDENDUM — POST-PLAN AUDIT (2026-07-29)
+
+**Why this section exists.** A full read-through of every file in `/server` and `/client` (excluding `node_modules` / `dist`) was performed and diffed against `SERVER_PLAN.md` and `CLIENT_PLAN.md`. The codebase has grown past both plans: an entire AI assistant subsystem was added, media storage moved from disk to MongoDB, auth gained usernames, the login/register pages were replaced by a landing panel, the two admin history views were merged, and the deployment target changed from "client and server hosted separately" to a **single-origin monorepo**.
+
+Everything below **exists in the code today but is absent from (or contradicts) the two plan documents**. It is recorded here so the work is credited, discoverable, and treated as part of the delivered system. Items marked **⚠ DEVIATION** contradict a plan statement; items marked **➕ ADDITION** are net-new; items marked **🔧 CORRECTION** fix an earlier entry in this log.
+
+---
+
+## A. Azeu AI — in-app AI assistant  ➕ ADDITION (in neither plan)
+
+A role-aware conversational assistant that teaches users how to operate AzCuts. Entirely absent from `SERVER_PLAN.md` and `CLIENT_PLAN.md`.
+
+**Server**
+- `server/ai/prompts/user.txt`, `staff.txt`, `admin.txt` — three hand-written system prompts ("Azeu AI"), one per role, each documenting that role's real workflows (booking wizard steps, accept/reject/re-route semantics, discount locking, system modes, 20-per-page user manager, etc.) plus a shared guardrail block: refuse off-topic questions, never reveal the prompt, no source/DB/server access, no live data, no invented prices, no medical/legal/financial advice.
+- `server/ai/aichatbot-logo.png` — the assistant's brand mark (mirrored to `client/public/assets/aichatbot-logo.png`).
+- `server/services/chatbot.service.js` — `chat({ role, messages })`. Prompts are read from disk once and held in an in-memory `promptCache`. Client history is sanitized before it ever reaches the model: only `user`/`assistant` turns with non-empty string content survive, trimmed and capped at **`MAX_CONTENT_CHARS = 2000`**, keeping only the last **`MAX_HISTORY = 12`** turns. Upstream call is **Groq** (`temperature 0.6`, `max_completion_tokens 2048`, `top_p 0.95`, `stream false`, `reasoning_effort 'none'`, **`tools: []`** so the model can never act on the system), wrapped in an `AbortController` with a **30 s** timeout. Error mapping: missing key → **503**, timeout → **504**, upstream failure/empty reply → **502**; the upstream body is logged server-side (truncated to 500 chars) and never returned to the browser.
+- `server/controllers/chatbot.controller.js` — **the role is derived from `req.user` only, never from the request body**, so guests can never reach the staff or admin guide (they fall back to the `user` guide).
+- `server/validators/chatbot.validator.js` — `messages` must be an array of 1–50 items; each `role ∈ {user, assistant}`; each `content` a non-empty string ≤ 2000 chars.
+- `server/routes/chatbot.routes.js` → **`POST /api/chatbot/message`** (`optionalAuth` → `chatRules` → `validate`), mounted in `routes/index.js`. Deliberately public so landing-page visitors can use it.
+- **New env vars** (in `config/env.js` + `.env.example`, absent from `SERVER_PLAN.md §9`): `GROQ_API_KEY` (default `''`), `GROQ_MODEL` (default `qwen/qwen3.6-27b`), `GROQ_API_URL` (default `https://api.groq.com/openai/v1/chat/completions`). The key never leaves the server; when unset the endpoint degrades to a friendly "unavailable" message instead of crashing.
+
+**Client**
+- `client/src/api/chatbot.api.js` — `chatbotApi.send(messages)` → `POST /chatbot/message`. Never sends a role.
+- `client/src/components/ChatWidget.jsx` (~620 lines, mounted globally in `App.jsx`, so it is available on **every** route including the landing page):
+  - Role-specific greeting + three starter suggestion chips per role (`GUIDE.user/staff/admin`); the conversation resets when the effective role changes.
+  - A **dependency-free markdown renderer** (`FormattedMessage` + `renderInline`) covering `**bold**`, `*italic*`/`_italic_`, `` `code` ``, bullet lists, numbered lists and line breaks — no markdown library was added.
+  - **Typewriter reveal** of each reply (fixed ~90-step animation so long replies don't crawl) with a blinking caret, plus animated typing dots while awaiting the response.
+  - **Draggable launcher + draggable panel** (desktop only, `matchMedia('(min-width: 768px)')`): pointer-event dragging, a 4 px click-vs-drag threshold, clamping that keeps the panel below the 64 px navbar (`TOP_LIMIT`) and inside the viewport on resize, and the bubble stays visually connected below the panel's right edge. Position persists in `localStorage` under **`az-chat-pos`**.
+  - A periodic **"Need help?" nudge** (3.5 s visible / 4.5 s hidden loop) that permanently stops once the chat is opened, remembered via **`az-chat-seen`**.
+  - Accessibility: `role="dialog"`, `aria-expanded`, `aria-label`s, Enter/Space activation, Enter-to-send / Shift+Enter-for-newline, and a visible "It can make mistakes" disclaimer.
+  - `animate-ripple` attention rings behind the closed bubble (keyframes added to `tailwind.config.js`).
+
+---
+
+## B. Auth & identity changes
+
+- **`username` is now a first-class login credential.** ➕/⚠ `User.username` — `required`, `unique`, `sparse`, `lowercase`, 3–30 chars, validated against `USERNAME_RE = /^[a-zA-Z0-9._]+$/`. `auth.service.login` accepts **either a username or an email** via a single `identifier` field. `SERVER_PLAN.md §3.1` names email as *the* login id and lists no username field; `POST /auth/register` in `§5` lists no username either (it is now required at registration).
+- **⚠ DEVIATION — `Login.jsx` / `Register.jsx` / `AuthShell.jsx` no longer exist.** Auth moved into `client/src/components/layout/LandingAuthPanel.jsx`: a portalled, `Escape`-dismissable, body-scroll-locking **slide-in panel** on the landing page with a Log in / Sign up segmented switch, so guests authenticate without leaving the page. `App.jsx` now **redirects `/login` and `/register` to `/`**. This replaces `CLIENT_PLAN §2.1`'s dedicated `/login` + `/register` routes and `§3`'s `pages/public/Login.jsx` + `Register.jsx`.
+- **Refresh-cookie scoping** — the cookie is named `refreshToken` and scoped to **`path=/api/auth`** (not `/`), `httpOnly`, `secure` in prod, `sameSite` `lax` in dev / `none` in prod.
+- **Refresh-token reuse detection** — every refresh JWT carries a random **`jti`**; rotation revokes the presented row, and presenting a valid-but-unknown/already-revoked token **revokes every token for that user** (`RefreshToken.updateMany({user}, {revoked:true})`) and returns **401 "Refresh token reuse detected. Please log in again."**
+- **Disabled accounts** — `login` rejects `status: 'inactive'` with **403 "This account is disabled"** before the system-mode check.
+- `auth.validator.js` deliberately **avoids `normalizeEmail()`** so Gmail dot-stripping can't desync the stored email from what the user types.
+- `server/seeder.js` ➕ — a standalone destructive **admin reset** helper (`node seeder.js`) separate from `seed/seed.js`. It `deleteMany`s every `role: 'admin'` plus anyone holding the target email/username, then recreates one admin (`admin` / `admin@azcuts.com` / password **`admin`**, hashed by the model hook). Testing-only; the credentials differ from the documented `Admin@123` seed. `seed/seed.js` by contrast inserts admin/staff via **raw `User.collection.insertOne`**, bypassing the bcrypt hook because those JSON seeds carry pre-hashed passwords.
+
+---
+
+## C. Media storage moved from local disk into MongoDB  ⚠ DEVIATION
+
+`SERVER_PLAN.md` locks image storage as "**Local disk** via Multer → `/server/uploads/` served statically" with `User.avatar` / `Service.image` as path strings. The code now stores the **bytes on the document**:
+
+- `User.avatarData: Buffer` + `User.avatarType: String` (both `select: false`); `Service.imageData: Buffer` + `Service.imageType: String` (both `select: false`).
+- `middleware/uploadImage.js` ➕ — **memory-storage** Multer, allowing `image/png`, `image/jpeg`, `image/jpg` only, 5 MB cap, message "Only PNG, JPG, and JPEG images are allowed". This is what the routes actually use.
+- **New public streaming endpoints:** **`GET /api/users/:id/avatar`** (declared *before* the router's auth gate, so it is public) and **`GET /api/services/:id/image`**. Both set the stored mime type and `Cache-Control: public, max-age=31536000, immutable`.
+- The `avatar` / `image` string fields now hold **cache-busted URLs** pointing at those endpoints (`/api/users/<id>/avatar?v=<Date.now()>`), so a re-upload invalidates the immutable cache.
+- **Either/or semantics:** submitting a text `avatar`/`image` **URL** (validated as `http(s)` with `require_protocol`) clears the stored bytes and makes the external URL the source of truth.
+- `middleware/upload.js` (the original disk Multer, which also permitted `webp`/`gif`) **still exists but is imported by no route** — dead/legacy. `inventory.controller.deleteUploadIfLocal()` remains as a best-effort cleanup for legacy `/uploads/*` files.
+- `/uploads` is still statically served for backward compatibility, and `client/src/utils/serverAsset.js` still resolves relative server paths against the API origin.
+
+---
+
+## D. Server-persisted theme preference  ➕ ADDITION
+
+`SERVER_PLAN.md` calls theme a "Frontend concern". It is now a synced account setting:
+
+- `User.theme` — enum `light|dark`, intentionally **unset by default**.
+- **`PUT /api/users/theme`** (`auth` → `systemMode` → `setThemeRules`) → `user.controller.setTheme`.
+- `client/src/components/ThemeSync.jsx` ➕ (mounted globally in `App.jsx`) — reconciles once per authenticated user: if the account has a saved theme it is applied locally; if it has none yet the current local preference is **seeded to the DB**; afterwards any explicit toggle is persisted. Failures are non-fatal (the local theme still applies). Guests remain `localStorage`-only.
+- `client/public/theme-init.js` ➕ — the no-flash bootstrap was extracted from an inline `<script>` into an **external file specifically so it satisfies a strict CSP `script-src`** (`CLIENT_PLAN §3` and this log's Phase 0 entry both describe it as inline). It reads `az-theme`, falls back to `prefers-color-scheme`, and also sets `documentElement.style.colorScheme`.
+
+---
+
+## E. Booking & lifecycle rules beyond `SERVER_PLAN §2`
+
+- **One active booking per customer** ➕ — `appointment.service.createBooking` rejects a new booking with **409** ("You already have a booking in progress…") while the customer holds any appointment in `pending`/`accepted`/`in_service`. This is a significant product constraint documented nowhere in either plan.
+- **GCash is blocked at the service layer** — beyond the schema enum, `createBooking` throws **400 "GCash is not available yet — please choose cash"**, and the persisted record is always forced to `paymentMethod: 'cash'`, `paymentStatus: 'unpaid'`.
+- **Race-safe accept** — `acceptAppointment` pre-checks availability then performs a single atomic `findOneAndUpdate` guarded on `status: 'pending'` and `assignedStaff ∈ {null, self}`, so two staff can never claim the same pooled booking (**409 "Appointment is no longer available"**, **403** if routed elsewhere).
+- **System-assigned cancellation identity** — when a reject finds no eligible replacement, the auto-cancel records `cancelledBy: { userId: null, role: 'system' }` and a `Cancelled — no staff available after reject` history note. `§3.4` documents `cancelledBy` only as a user/role pair.
+- **Explicit-staff off-shift guard** — booking a staff member whose `status` is `inactive` returns **400 "That staff member is off shift"**.
+- **Slot response shape** — `getAvailableSlots` returns `{ date, tz, totalDuration, closed, slots[] }`; a closed weekday returns `closed: true` with an empty list rather than an error. `§2.2` only specifies the slot array.
+- **`Settings.storeHours` defaults** — every day defaults to `09:00–20:00`, and **Sunday defaults to `closed: true`**.
+- **`isApproved` is written but gates nothing** — no code path reads it. It remains reserved, as the plan hints, but is worth flagging as inert.
+
+---
+
+## F. Admin history: two endpoints merged into one  ⚠ DEVIATION
+
+`SERVER_PLAN §5` and `CLIENT_PLAN §2.1/§3` specify **two** endpoints (`/admin/history/staff`, `/admin/history/users`) and **two** pages (`StaffHistory.jsx`, `UserHistory.jsx`). The code ships **one** of each:
+
+- **`GET /api/admin/history`** — "replaces the old `/history/staff` + `/history/users` split" (comment in `admin.routes.js`). Query params: `status`, `range`, **`assignment=all|assigned|unassigned`** ➕, **`search`** ➕ (free-text across `receiptNo` and customer/staff `fullName`, with `escapeRegex()` applied before building the `RegExp`), **`sort`** ➕, `page`, `limit`.
+- Named sort presets ➕ — `USER_SORTS { newest, oldest, name_asc, name_desc }` and `HISTORY_SORTS { newest, oldest, upcoming, scheduled, total_desc, total_asc }`. `GET /api/admin/users` also gained `?status` and `?sort`, with `limit` capped at 100.
+- `client/src/pages/admin/AppointmentHistory.jsx` ➕ — the unified page: **350 ms debounced** search box, status/range/assignment/sort selects, a page-size selector, an inline discount percentage indicator on the total, and the discount modal. `client/src/api/admin.api.js` exposes a single `history()` wrapper.
+- `App.jsx` keeps **`/admin/history/staff` and `/admin/history/users` as redirects** to `/admin/history` so old links still resolve. `navConfig.js` shows one "Booking History" entry.
+- 🔧 CORRECTION to the Phase 7 entry above: `components/AdminAppointmentHistory.jsx`, `pages/admin/StaffHistory.jsx` and `pages/admin/UserHistory.jsx` **do not exist on disk**; they were superseded by `pages/admin/AppointmentHistory.jsx`.
+
+---
+
+## G. Public payload & roster extensions
+
+- **`GET /settings/public` returns more than `§5` documents** — beyond `shopInfo`, it returns `timezone`, `currency`, **`systemMode`** (drives the client's maintenance/offline banner and the topbar status chip), `storeHours`, **`nicknames`** (already flagged in the Phase 6–11 entry), active `services`, **and a public `staff` roster** ➕ (`fullName nickname avatar avgRating ratingCount`, active/in-service only, sorted `totalServed desc, fullName asc`) for a "meet the barbers" section.
+- **`GET /api/appointments/staff`** — already flagged in the Phase 3 entry; restated here because it is still absent from `SERVER_PLAN §5`.
+- **Nickname CRUD shares one path** — `POST` / `PUT` / `DELETE` all on `/api/settings/nicknames` (value in the body, not the URL), with duplicate and not-found guards. Nickname membership in `Settings.nicknames` is enforced in **three** places: `admin.createUser`, `admin.updateUser`, and `user.updateProfile` (which additionally rejects non-staff with 400 "Only staff can set a nickname").
+- **Admin self-protection guards** ➕ — `updateUser` blocks changing your own role; `deleteUser` blocks self-deletion **and refuses to delete any account with `role: 'admin'`** ("Admin accounts cannot be deleted"), which is stricter than the "last admin" rule logged in Phase 6.
+- **`counters` collection is a 7th Mongoose model** — `utils/receiptNo.js` defines `Counter { _id: String, seq: Number }` inline. `SERVER_PLAN §3` lists six collections.
+
+---
+
+## H. Client design system & UX beyond `CLIENT_PLAN §1/§3`
+
+**New reusable components / hooks (none appear in `CLIENT_PLAN §3`'s file tree)**
+- `components/ui/ImagePicker.jsx` ➕ — one control, three input methods: click-to-browse, **drag & drop a file**, or **drag an image from another browser tab / paste an image URL** (`text/uri-list` handling + "Use link" button). Client-side mime + 5 MB validation mirroring the server, object-URL preview with `revokeObjectURL` cleanup, hover "click or drop to replace" affordance, clear button, and `video`/`square` aspect presets. Used for service images (`admin/Inventory.jsx`) and profile photos (`AccountSettings.jsx`). Emits `onChange({ file, url })` with exactly one set.
+- `components/ui/Avatar.jsx` ➕ — round avatar resolving server paths through `serverAsset`, falling back to derived initials.
+- `components/ui/Reveal.jsx` + `hooks/useInView.js` ➕ — an `IntersectionObserver`-based **scroll-reveal system** (`up|down|left|right|fade`, staggerable via `delay`) that animates **both ways** (`once: false`) and honours `prefers-reduced-motion` with a hard bypass plus `motion-reduce:` utilities.
+- `components/PageHeader.jsx`, `components/ThemeSync.jsx`, `components/RealtimeBridge.jsx`, `components/ChatWidget.jsx`, `components/AppointmentCard.jsx`, `components/StatCard.jsx`, `components/AccountSettings.jsx` — all present, none listed in `CLIENT_PLAN §3`.
+- `hooks/useSettingsPublic.js`, `useServices.js`, `useSlots.js`, `useBookableStaff.js`, `useStaff.js`, `useAdmin.js`, `useInView.js`; `utils/cn.js`, `utils/serverAsset.js` — likewise unlisted. `CLIENT_PLAN`'s `useAdminUsers.js` ships as an export of `useAdmin.js`.
+
+**Layout / shell additions**
+- `Topbar.jsx` ➕ — a **`StatusClock`** (system-mode chip with an animated ping when online, plus a live ticking clock and date), a **`MarqueeText`** helper that auto-scrolls the account name **only when it actually overflows** (measured via `scrollWidth`, driven by a `--marquee-shift` CSS variable and an `animate-marquee` keyframe), the staff **shift toggle**, and the socket-driven **notification bell** (capped at 99).
+- `DashboardShell.jsx` ➕ — a **persisted desktop sidebar collapse** toggle (`PanelLeftClose`/`PanelLeftOpen`, `aria-pressed`) alongside the documented mobile drawer.
+- `components/ui/Pagination.jsx` + `DataTable.jsx` ➕ — a **rows-per-page selector** (`pageSizeOptions`, default sets of 10/20/30/50) and a total-count readout, used by Inventory and Booking History. `CLIENT_PLAN §4.10` only specifies a fixed 20/page.
+
+**Visual identity**
+- ⚠/🔧 **Brand palette is red + water-blue, not indigo + teal.** `tailwind.config.js` ships `brand #E11D48` / `hover #BE123C` / `fg #FFFFFF` and `accent #0EA5E9` / `hover #0284C7`. That matches `CLIENT_PLAN §1.1`'s prose but **contradicts `§1.3`'s config sample** (`#4F46E5` / `#14B8A6`) **and the Phase 0 entry in this log**, which recorded indigo/teal. The red/blue values are the shipped truth.
+- ➕ **Three type families, not one.** `index.html` loads **Oswald** (landing display headlines) and **Fraunces** (dashboard serif headings + stat numerals) from Google Fonts, alongside the self-hosted variable **Inter** body face. `CLIENT_PLAN §1.2` commits to a single sans.
+- ➕ **Extra animation + token layer** in `tailwind.config.js`: `fade-in-up`, **`barber`** (a scrolling barber-pole stripe for the dashboard brand mark), **`marquee`**, **`ripple`**, plus the `shadow-card` / `card-hover` / `pop` scale and the semantic `z-index` scale.
+
+**Landing page content (`pages/public/Landing.jsx`) ➕**
+- ⚠ Local imported imagery replaces the "no verified external images" workaround noted in the Phase 2 entry: `pages/public/images/landing-background.avif` (hero), `azeumark.jpg`, `lisa.jpg`, `mrbeast.png`.
+- Sections not in `CLIENT_PLAN §4.1`: a **stats band** (`67+ Years Experience`, `6.9k+ Cuts Completed`, `6.7 Avg. Rating`), a **customer-stories / testimonials** block (two quoted personas with photos), a **developer credits** block distinct from the barber roster (Uelmark G. Valdehueza with photo, JM Nikko O. Gallardo, Lara Angel A. Habagat), an inline SVG **dot-texture** background, and `Eyebrow` section kickers. Guest "Book" CTAs open the auth panel in **register** mode instead of navigating.
+- ⚠ **The stats and testimonials are hardcoded demo content**, not server data — they will not track real shop performance.
+
+---
+
+## I. Deployment architecture: single-origin monorepo  ⚠ DEVIATION
+
+Both plans assume the client and API are hosted separately (`CLIENT_PLAN §6 Phase 11`, `SERVER_PLAN §10`) with CORS between them. The code now supports **one process serving both**:
+
+- **`package.json` at the repo root** ➕ (undocumented in either plan) — a monorepo runner: `engines.node 20.x`, `heroku-postbuild` (installs both workspaces then builds the client), `start` → `npm start --prefix server`, plus `dev:server` / `dev:client` / `seed` pass-throughs. Its description names the target: "deployed as a single Heroku app."
+- `server/app.js` ➕ — **in production only**, statically serves `../client/dist` and adds an SPA fallback that skips non-GET requests and anything under `/api` or `/uploads`.
+- `client/src/config/axios.js` + `utils/serverAsset.js` ➕ — when `VITE_API_URL` is unset in a production build they default to a **relative `/api`**, so no origin needs to be baked in.
+- `server/app.js` ➕ — a **custom helmet CSP** (`img-src 'self' data: blob: https:`, `connect-src 'self' ws: wss: https:`) and `crossOriginResourcePolicy: 'cross-origin'` so DB-streamed images and WebSockets work under helmet's defaults; `trust proxy` is enabled in production.
+- `client/vercel.json` + `client/public/_redirects` still exist for the separate-host option, so both models are supported.
+
+---
+
+## J. Security & hardening details not in the plans
+
+- **Rate-limit policy numbers** — `authLimiter`: 15-minute window, **30** requests in production / **200** in dev. `apiLimiter`: 1-minute window, **300** in production / **2000** in dev. Both emit standard `RateLimit-*` headers and the project's `{ success:false, message }` envelope. Store is **in-memory**, so the limits are per-process (a multi-instance deploy needs a shared store).
+- **System-mode gate coverage is partial by design** — applied to `/users`, `/appointments`, `/staff`. **Not** applied to `/admin`, `/analytics`, `/settings`, `/services`, `/extras`, or `/chatbot`. Admin passes in every mode anyway, and leaving `/settings` ungated is what lets an admin restore `online` while offline — but it also means **inventory reads and the chatbot stay reachable during maintenance/offline**, which neither plan states.
+- **Error-handler mappings** — `MulterError LIMIT_FILE_SIZE` → 400 "File too large (max 5MB)", malformed JSON → 400, oversized body → 413, and 5xx messages are masked to "Internal Server Error" in production while the stack is logged.
+- **`config/env.js` fails fast on `MONGO_URI` only**; every other var (including both JWT secrets) has a dev fallback — so a production deploy that forgets `JWT_ACCESS_SECRET`/`JWT_REFRESH_SECRET` will **silently boot with `dev_access_secret` / `dev_refresh_secret`**. Worth treating as a hardening item.
+- **`utils/AESCrypt.js` has zero call sites.** It is implemented and documented in `SERVER_PLAN §6.1`, but no model or controller encrypts anything with it today.
+- `server/DEPLOYMENT.md`, `server/ecosystem.config.js` (PM2), and `client/DEPLOYMENT.md` exist and are current; none are referenced from either plan's file tree.
+
+---
+
+## K. Corrections to earlier entries in this log  🔧
+
+| Earlier claim | Actual state on disk |
+|---|---|
+| Phase 0/1 (client): created `pages/public/Login.jsx`, `Register.jsx`, `components/layout/AuthShell.jsx` | **Removed.** Auth lives in `components/layout/LandingAuthPanel.jsx`; `/login` + `/register` redirect to `/`. |
+| Phase 7 (client): created `components/AdminAppointmentHistory.jsx` → `StaffHistory.jsx` + `UserHistory.jsx` | **Removed.** Replaced by the single `pages/admin/AppointmentHistory.jsx` against `GET /admin/history`. |
+| Phase 0 (client): "palette/type = identity preservation … committed indigo/teal palette … Inter" | Shipped palette is **red `#E11D48` / blue `#0EA5E9`**; type stack is **Inter + Oswald + Fraunces**. |
+| Phase 0 (client): index.html uses a **no-flash inline script** | Extracted to the external **`public/theme-init.js`** for CSP compatibility. |
+| Phase 2 (client): external imagery unavailable, so hero/cards use logo + gradients | Local **`pages/public/images/*`** assets are now imported and used for the hero and testimonials. |
+| Phase 6 (server): image storage / avatar upload via disk Multer to `/uploads` | Images now live **in MongoDB** (`avatarData`/`imageData`) and stream from `/api/users/:id/avatar` and `/api/services/:id/image`; `middleware/upload.js` is unused. |
+| Phase 2 (server): "`GET /settings/public` … belongs to Phase 8" | Implemented, and it now also returns `systemMode`, `storeHours`, `nicknames`, and a public staff roster. |
+| `CLIENT_PLAN §3`: `public/assets/templates/` for template service images | **Does not exist.** Services with no image fall back to a branded category gradient in `ServiceCard`. |
+
+---
+
+## L. Known gaps & limitations (verified absent)
+
+Recording these so they are not mistaken for oversights in the audit:
+
+- **No automated tests anywhere.** `server` `npm test` is the default failing stub; the client has no test tooling. Every "verified" claim in this log came from temporary manual scripts that were deleted afterwards.
+- **`client/package.json` declares a `lint` script (`eslint .`) but ESLint is not installed** — the script cannot run as-is.
+- **No CI configuration** in either workspace.
+- **No password reset / forgot-password flow, no email verification, and no email or SMS layer at all.** Nothing in the system sends a message outside the app.
+- **No payment processing.** GCash is validated then rejected; `paymentStatus` exists but no route ever flips it to `paid`, so the "staff/admin marks paid" behaviour described in `SERVER_PLAN §3.4` is **not implemented**.
+- **No logout-all-devices endpoint**, no admin endpoint to read a single appointment, and no staff reply to a customer rating.
+- **Socket.io is push-only** — the server registers no inbound custom events beyond the handshake, `connection`, and `disconnect`.
+- **`dashboard:refresh` carries only `{ at }`**; the admin client refetches `GET /admin/dashboard` on receipt (deliberate, per the Phase 9 note).
+- **Server-side receipt PDF** (the optional item in `SERVER_PLAN §2.6`) was not built; PNG export remains client-side via html2canvas.
+
+---
+
+### Audit scope
+
+Read in full: all of `/server` except `node_modules` (entry points, `ai/`, `config/`, `models/`, `middleware/`, `validators/`, `controllers/`, `services/`, `routes/`, `socket/`, `utils/`, `seed/`, `seeder.js`, `ecosystem.config.js`, `DEPLOYMENT.md`, `.env.example`, `package.json`) and all of `/client` except `node_modules` and `dist` (root configs, `index.html`, `public/`, and all files under `src/`), diffed against `SERVER_PLAN.md` and `CLIENT_PLAN.md`. **Documentation-only pass — no application code was modified.**
