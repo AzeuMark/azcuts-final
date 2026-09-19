@@ -7,12 +7,21 @@
   color: #111827 !important;
 }
 
+/* Flowchart node labels render as span.nodeLabel (not inside .label). */
+.mmd-light span.nodeLabel {
+  color: #111827 !important;
+}
+
 .mmd-light .edgeLabel,
 .mmd-light .edgeLabel .label {
   color: #ffffff !important;
 }
 
 .mmd-dark .label {
+  color: #f3f4f6 !important;
+}
+
+.mmd-dark span.nodeLabel {
   color: #f3f4f6 !important;
 }
 

@@ -18,6 +18,8 @@ import lisaImg from './images/lisa.jpg';
 import mrbeastImg from './images/mrbeast.png';
 import landingBackgroundImg from './images/landing-background.avif'
 import azeumarkImg from './images/azeumark.jpg'
+import gallardoImg from './images/jm-nikko-o-gallardo.png'
+import habagatImg from './images/lara-angel-a-habagat.png'
 
 
 // Where the "Book" CTAs go: guests register first; signed-in users land in their portal.
@@ -47,21 +49,21 @@ const DEVELOPERS = [
     role: 'Head Developer',
     img: azeumarkImg,
   },
-  { name: 'JM Nikko O. Gallardo', role: 'Assistant Developer' },
-  { name: 'Lara Angel A. Habagat', role: 'Assistant Developer' },
+  { name: 'JM Nikko O. Gallardo', role: 'Assistant Developer', img: gallardoImg },
+  { name: 'Lara Angel A. Habagat', role: 'Assistant Developer', img: habagatImg },
 ];
 
 const STORIES = [
   {
     quote:
-      'Sharpest I\u2019ve looked outside a photoshoot. The team nailed the style and booking was effortless.',
+      'Instant idol-tier visual upgrade! The team mastered my hair design and setting up my appointment was super easy.',
     name: 'Lalisa Manobal',
     detail: 'Lisa from BLACKPINK',
     img: lisaImg,
   },
   {
     quote:
-      'Fastest, cleanest cut ever — in and out, looking fresh. AzCuts is the real deal.',
+      'LAST PERSON TO LEAVE THE BARBER CHAIR GETS $50,000! Easiest win ever because AzCuts is ridiculously fast.',
     name: 'Jimmy Donaldson',
     detail: 'MrBeast',
     img: mrbeastImg,
@@ -99,10 +101,9 @@ function Eyebrow({ children }) {
 export default function Landing() {
   const { data, isLoading } = useSettingsPublic();
   const { isAuthenticated, role } = useAuth();
-  // S9: demo stats band + testimonials hide behind flags in school mode.
+  // S9: demo stats band hides behind a flag in school mode.
   const { isEnabled } = useFeatures();
   const statsOn = isEnabled('landingCms.statsBand');
-  const storiesOn = isEnabled('landingCms.testimonials');
   const [category, setCategory] = useState('all');
   const [authMode, setAuthMode] = useState(null); // 'login' | 'register' | null
 
@@ -364,9 +365,8 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Stories (demo testimonials — hidden in school mode) */}
-        {storiesOn && (
-          <section id="stories" className="scroll-mt-20 border-b border-line">
+        {/* Stories */}
+        <section id="stories" className="scroll-mt-20 border-b border-line">
           <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="mb-12 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
               <Reveal direction="left">
@@ -408,8 +408,7 @@ export default function Landing() {
               ))}
             </div>
           </div>
-          </section>
-        )}
+        </section>
 
         {/* Developers — small credits row, distinct from the barbers */}
         <section id="developers" className="scroll-mt-20 border-b border-line">
