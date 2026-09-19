@@ -3,6 +3,7 @@ const express = require('express');
 const auth = require('../middleware/auth');
 const systemMode = require('../middleware/systemMode');
 const requireRole = require('../middleware/roles');
+const requireFeature = require('../middleware/requireFeature');
 const validate = require('../middleware/validate');
 const ctrl = require('../controllers/appointment.controller');
 const {
@@ -10,6 +11,7 @@ const {
   createBookingRules,
   statusChangeRules,
   cancelRules,
+  assignRules,
   rateRules,
 } = require('../validators/appointment.validator');
 
@@ -28,13 +30,30 @@ router.post('/', requireRole('user'), createBookingRules, validate, ctrl.createB
 router.get('/:id', ctrl.getOne);
 router.get('/:id/receipt', ctrl.getReceipt);
 
+// Admin manual assign (S5, school paper: "Assign available barber/stylist").
+router.patch(
+  '/:id/assign',
+  requireRole('admin'),
+  requireFeature('appointmentManagement.manualAssignByAdmin'),
+  assignRules,
+  validate,
+  ctrl.assign
+);
+
 // Advance the state machine (assigned staff or admin; enforced in the service).
 router.patch('/:id/status', requireRole('staff', 'admin'), statusChangeRules, validate, ctrl.changeStatus);
 
 // Cancel (owner, assigned staff, or admin; enforced in the service).
 router.patch('/:id/cancel', cancelRules, validate, ctrl.cancel);
 
-// Rate / edit rating (owner only, appointment must be done; enforced in the service).
-router.post('/:id/rate', requireRole('user'), rateRules, validate, ctrl.rate);
+// Rate / edit rating — S5: disabled in school mode (not in the paper).
+router.post(
+  '/:id/rate',
+  requireFeature('ratings.enabled'),
+  requireRole('user'),
+  rateRules,
+  validate,
+  ctrl.rate
+);
 
 module.exports = router;

@@ -2,6 +2,7 @@ const express = require('express');
 
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/roles');
+const requireFeature = require('../middleware/requireFeature');
 const validate = require('../middleware/validate');
 const ctrl = require('../controllers/admin.controller');
 const {
@@ -22,7 +23,13 @@ router.post('/users', adminCreateUserRules, validate, ctrl.createUser);
 router.put('/users/:id', adminUpdateUserRules, validate, ctrl.updateUser);
 router.delete('/users/:id', ctrl.deleteUser);
 
-router.patch('/appointments/:id/discount', discountRules, validate, ctrl.setDiscount);
+router.patch(
+  '/appointments/:id/discount',
+  requireFeature('pricing.discountPercent'),
+  discountRules,
+  validate,
+  ctrl.setDiscount
+);
 
 // Unified booking history (replaces the old /history/staff + /history/users split).
 router.get('/history', ctrl.history);

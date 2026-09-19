@@ -24,7 +24,13 @@ const statusChangeRules = [
 ];
 
 const cancelRules = [
-  body('cancelReason').trim().notEmpty().withMessage('A cancellation reason is required'),
+  // S5: optional in school mode (service defaults to 'Cancelled'); still
+  // required when the cancelWithReason flag is on (enforced in the service).
+  body('cancelReason').optional({ values: 'falsy' }).trim().notEmpty().withMessage('A cancellation reason is required'),
+];
+
+const assignRules = [
+  body('staffId').isMongoId().withMessage('A valid staffId is required'),
 ];
 
 const rateRules = [
@@ -32,4 +38,4 @@ const rateRules = [
   body('comment').optional().trim().isLength({ max: 500 }).withMessage('Comment too long'),
 ];
 
-module.exports = { slotsRules, createBookingRules, statusChangeRules, cancelRules, rateRules };
+module.exports = { slotsRules, createBookingRules, statusChangeRules, cancelRules, assignRules, rateRules };

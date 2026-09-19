@@ -114,6 +114,12 @@ const changeStatus = asyncHandler(async (req, res) => {
   return ok(res, { appointment: appt }, `Appointment marked ${req.body.status}`);
 });
 
+// S5 (school paper): admin assigns an available barber to a pending booking.
+const assign = asyncHandler(async (req, res) => {
+  const appt = await appointmentService.assignAppointment(req.params.id, req.body.staffId, req.user);
+  return ok(res, { appointment: appt }, 'Barber assigned');
+});
+
 const cancel = asyncHandler(async (req, res) => {
   const appt = await appointmentService.cancelAppointment(req.params.id, req.user, req.body.cancelReason);
   return ok(res, { appointment: appt }, 'Appointment cancelled');
@@ -142,6 +148,7 @@ module.exports = {
   getOne,
   getReceipt,
   changeStatus,
+  assign,
   cancel,
   rate,
 };
