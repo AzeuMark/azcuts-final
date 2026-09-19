@@ -1009,3 +1009,7 @@ three report kinds in JSON+CSV). Baseline restored afterward: 0 sales,
 0 appointments, ledger 10, Pomade 20, 5 products. Decisions locked:
 DISABLE-only, per-barber stock flag, manual usage (no auto-decrement).
 Next: defense demo per `defense-script.md`.
+
+> Update 2026-09-19 (`barbers-import.md`): demo staff/services replaced with
+> the real shop data (3 barbers, 4 services + real photos). Phase logs above
+> remain the historical record; living docs (`defense-script.md`, guide) updated.

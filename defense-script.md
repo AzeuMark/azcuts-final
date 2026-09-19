@@ -1,9 +1,10 @@
 # AzCuts — Defense Demo Script (school-compliant build)
 
 Accounts (seeded): admin `admin@azcuts.com / Admin@123` · staff
-`miguel@azcuts.com / Staff@123`, `ramon@azcuts.com / Staff@123` · customers
-self-register on the landing page. Serve: `npm run dev` in `/server` (:5000)
-and `/client` (:3000). Mode: `schoolComplianceMode: true` (paper view).
+`cristiano@azcuts.com`, `joshua@azcuts.com`, `zayn@azcuts.com` (all /
+`Staff@123`) · customers self-register on the landing page. Serve:
+`npm run dev` in `/server` (:5000) and `/client` (:3000). Mode:
+`schoolComplianceMode: true` (paper view).
 
 ## Act 1 — Customer (paper §1) — 3 min
 1. Landing `/`: services gallery, barbers, hours, contact (all live data).
@@ -15,7 +16,7 @@ and `/client` (:3000). Mode: `schoolComplianceMode: true` (paper view).
 ## Act 2 — Owner assigns + manages (paper §3) — 4 min
 1. Admin `/admin/dashboard`: staff, bookings, **shop sales today**,
    **low-stock** widgets.
-2. `/admin/history` (filter Awaiting barber) → **Assign** → Miguel.
+2. `/admin/history` (filter Awaiting barber) → **Assign** → Joshua (Barber).
 3. `/admin/users`: add staff, deactivate (status Inactive), grant
    **Can update stock**; search/sort/pagination.
 4. `/admin/inventory`: Services CRUD → **Products** CRUD → **Stock** tab

@@ -1,8 +1,18 @@
 [
   {
-    "fullName": "Miguel Santos",
-    "username": "miguel",
-    "email": "miguel@azcuts.com",
+    "fullName": "Cristiano Ronaldo",
+    "username": "cristiano",
+    "email": "cristiano@azcuts.com",
+    "phone": "",
+    "password": "$2b$10$.xt0jL3.Uxa0Ls3L4KOS3ucNBaSeoW49.ICe9GEk4bve72ahbLeUC",
+    "role": "staff",
+    "status": "active",
+    "nickname": "Stylist"
+  },
+  {
+    "fullName": "Joshua Garcia",
+    "username": "joshua",
+    "email": "joshua@azcuts.com",
     "phone": "",
     "password": "$2b$10$.xt0jL3.Uxa0Ls3L4KOS3ucNBaSeoW49.ICe9GEk4bve72ahbLeUC",
     "role": "staff",
@@ -10,9 +20,9 @@
     "nickname": "Barber"
   },
   {
-    "fullName": "Ramon Cruz",
-    "username": "ramon",
-    "email": "ramon@azcuts.com",
+    "fullName": "Zayn Malik",
+    "username": "zayn",
+    "email": "zayn@azcuts.com",
     "phone": "",
     "password": "$2b$10$.xt0jL3.Uxa0Ls3L4KOS3ucNBaSeoW49.ICe9GEk4bve72ahbLeUC",
     "role": "staff",

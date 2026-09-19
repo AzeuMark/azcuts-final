@@ -131,9 +131,9 @@ If your panel checks strictly against the paper, G1â€“G6 are the items to either
 
 ---
 
-## 6. CLOSED — School-compliance build S0–S10 (2026-09-19)
+## 6. CLOSED ï¿½ School-compliance build S0ï¿½S10 (2026-09-19)
 
-All gaps G1–G9 from §2 are now implemented; all extras from §3 are DISABLED
+All gaps G1ï¿½G9 from ï¿½2 are now implemented; all extras from ï¿½3 are DISABLED
 behind root `configuration.json` (`schoolComplianceMode: true`) instead of
 deleted, so one flag flip restores the full system.
 
@@ -152,9 +152,12 @@ one-booking limit, discounts, tax UI, receipt PNG, ratings, system modes,
 nicknames, sockets, charts, landing demo stats/testimonials, chatbot,
 server theme sync, username-login, hard delete (full list: `configuration.json`).
 
-**S10 paper walkthrough (2026-09-19, live dev server): 40/40 checks green** —
+**S10 paper walkthrough (2026-09-19, live dev server): 40/40 checks green** ï¿½
 every Customer, Barber, and Owner bullet in `school-requirements.txt`
 exercised end-to-end (register?book?assign?confirm?start?record sales?
 update stock?done?dashboard?users?services?products?inventory?reports?logout).
 Test data removed afterward; DB baseline: admin + 2 staff, 5 services,
 5 products (82 units), 0 appointments, 0 sales.
+
+> Update 2026-09-19 (`barbers-import.md`): baseline is now admin + **3 real
+> staff** (Cristiano/Joshua/Zayn), **4 real services** (Bob/Burst/Wolf/Pedicure).

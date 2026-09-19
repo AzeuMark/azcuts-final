@@ -68,7 +68,7 @@ export const BARBER_FEATURES = [
   {
     bullet: 'Log In',
     where: '/ (landing page)',
-    steps: ['Log in with a staff account (ask the admin to create one, or use the demo below)', 'You land on /staff/dashboard'],
+    steps: ['Log in with a staff account (ask the admin to create one, or use cristiano@azcuts.com / Staff@123)', 'You land on /staff/dashboard'],
     endpoint: 'POST /api/auth/login',
   },
   {
@@ -198,7 +198,8 @@ export const OWNER_FEATURES = [
 
 export const DEMO_ACCOUNTS = [
   { role: 'Owner', email: 'admin@azcuts.com', password: 'Admin@123', lands: '/admin/dashboard' },
-  { role: 'Barber', email: 'miguel@azcuts.com', password: 'Staff@123', lands: '/staff/dashboard' },
-  { role: 'Barber', email: 'ramon@azcuts.com', password: 'Staff@123', lands: '/staff/dashboard' },
+  { role: 'Stylist', email: 'cristiano@azcuts.com', password: 'Staff@123', lands: '/staff/dashboard' },
+  { role: 'Barber', email: 'joshua@azcuts.com', password: 'Staff@123', lands: '/staff/dashboard' },
+  { role: 'Hairstylist', email: 'zayn@azcuts.com', password: 'Staff@123', lands: '/staff/dashboard' },
   { role: 'Customer', email: '— (register on the landing page)', password: 'min. 6 characters', lands: '/app/book' },
 ];
