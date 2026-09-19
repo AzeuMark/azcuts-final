@@ -236,8 +236,7 @@ settings = singleton; refreshtokens, counters = infra
 ├── socket/ (GATED — init skipped when realtime.enabled:false)
 ├── ai/ (GATED — retained, route 503 in school mode)
 ├── seed/
-│   ├── products.seed.json (NEW — 4-6 demo products with stock)
-│   ├── inventory.seed.json (NEW — opening stock_in per product)
+│   ├── products.seed.json (NEW — 5 demo products; `openingStock` helper key becomes the opening `stock_in` ledger entry — no separate inventory seed file)
 │   └── existing seeds (KEEP)
 └── utils/ (KEEP + saleNo.js reusing receiptNo pattern)
 ```
@@ -331,11 +330,11 @@ Nav (target):
 - DoD: app boots with flags on/off; `/settings/public.features` returns flags; gated dummy route returns 403 when off.
 
 ### S1 — Database models + seeds
-- Tasks: `Product.js`, `Inventory.js`, `Sale.js` (§3); extend `Appointment(saleId, assignedBy)`; extend `utils/saleNo.js`; seeds `products.seed.json`, `inventory.seed.json`; `seed.js` loader (idempotent upsert).
+- Tasks: `Product.js`, `Inventory.js`, `Sale.js` (§3); extend `Appointment(saleId, assignedBy)` + `User.canUpdateStock`; `utils/saleNo.js` (SL- numbers via shared `counters`); seed via `products.seed.json` (`openingStock` key → opening `stock_in` ledger in `seed.js`, idempotent — no separate inventory seed file).
 - DoD: `node seed/seed.js` creates 5 products + opening stock; no appointments/sales wiped.
 
 ### S2 — Products backend
-- Tasks: `product.validator/service/controller/routes` (`GET /products` public active-only + `GET /products/:id/image`, CRUD admin with image upload, `isActive` toggle).
+- Tasks: `product.validator/controller/routes` (logic in controller per codebase convention — no separate service file) (`GET /products` public active-only + `GET /products/:id/image`, CRUD admin with image upload, `isActive` toggle; `stockQuantity` not writable — ledger-only).
 - DoD: admin CRUD 201/200; public sees active only; image streams; non-admin write 403.
 
 ### S3 — Inventory backend
