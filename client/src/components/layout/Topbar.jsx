@@ -6,6 +6,7 @@ import ThemeToggle from '../ui/ThemeToggle';
 import Avatar from '../ui/Avatar';
 import { useAuth } from '../../hooks/useAuth';
 import { useSettingsPublic } from '../../hooks/useSettingsPublic';
+import { useFeatures } from '../../hooks/useFeatures';
 import { useSocketEvent } from '../../hooks/useSocketEvent';
 import staffApi from '../../api/staff.api';
 import { getApiErrorMessage } from '../../config/axios';
@@ -118,6 +119,9 @@ function StatusClock() {
 export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed = false }) {
   const { user, role, logout } = useAuth();
   const navigate = useNavigate();
+  // S9: the bell is socket-driven — hidden when realtime is off (school mode).
+  const { isEnabled } = useFeatures();
+  const bellOn = isEnabled('realtime.notificationBell');
   const [menuOpen, setMenuOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const menuRef = useRef(null);
@@ -183,19 +187,21 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed 
 
       {role === 'staff' && <ShiftToggle />}
 
-      <button
-        type="button"
-        aria-label={unread > 0 ? `Notifications (${unread} new)` : 'Notifications'}
-        onClick={() => setUnread(0)}
-        className="relative rounded-md p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink focus-ring"
-      >
-        <Bell className="h-5 w-5" />
-        {unread > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-brand-fg">
-            {unread}
-          </span>
-        )}
-      </button>
+      {bellOn && (
+        <button
+          type="button"
+          aria-label={unread > 0 ? `Notifications (${unread} new)` : 'Notifications'}
+          onClick={() => setUnread(0)}
+          className="relative rounded-md p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink focus-ring"
+        >
+          <Bell className="h-5 w-5" />
+          {unread > 0 && (
+            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-brand-fg">
+              {unread}
+            </span>
+          )}
+        </button>
+      )}
 
       <ThemeToggle />
 

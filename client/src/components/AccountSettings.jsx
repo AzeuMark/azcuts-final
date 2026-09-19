@@ -16,9 +16,10 @@ import { serverAsset } from '../utils/serverAsset';
 export default function AccountSettings({ showNickname = false }) {
   const { user, setUser } = useAuth();
   const { data: settings } = useSettingsPublic();
-  // S9: nicknames are a non-paper extra — hidden in school mode.
+  // S9: nicknames + profile photo are non-paper extras — hidden in school mode.
   const { isEnabled } = useFeatures();
   const showNicknameGate = showNickname && isEnabled('nicknames.enabled');
+  const avatarOn = isEnabled('userAccountManagement.avatarUpload');
   const nicknames = settings?.nicknames || [];
 
   const profileForm = useForm({
@@ -102,22 +103,24 @@ export default function AccountSettings({ showNickname = false }) {
         </CardHeader>
         <form onSubmit={profileForm.handleSubmit((v) => profileMutation.mutate(v))} noValidate>
           <CardContent className="space-y-4">
-            <div className="border-b border-line pb-4">
-              <p className="mb-2 text-sm font-medium text-ink">Profile photo</p>
-              <ImagePicker
-                preview={serverAsset(user?.avatar)}
-                aspect="square"
-                rounded="full"
-                className="max-w-[220px]"
-                disabled={avatarBusy}
-                onChange={handleAvatarChange}
-                hint={
-                  avatarBusy
-                    ? 'Updating photo…'
-                    : 'PNG, JPG, or JPEG · max 5MB. A square image looks best.'
-                }
-              />
-            </div>
+            {avatarOn && (
+              <div className="border-b border-line pb-4">
+                <p className="mb-2 text-sm font-medium text-ink">Profile photo</p>
+                <ImagePicker
+                  preview={serverAsset(user?.avatar)}
+                  aspect="square"
+                  rounded="full"
+                  className="max-w-[220px]"
+                  disabled={avatarBusy}
+                  onChange={handleAvatarChange}
+                  hint={
+                    avatarBusy
+                      ? 'Updating photo…'
+                      : 'PNG, JPG, or JPEG · max 5MB. A square image looks best.'
+                  }
+                />
+              </div>
+            )}
             <Input
               label="Full name"
               error={profileForm.formState.errors.fullName?.message}
