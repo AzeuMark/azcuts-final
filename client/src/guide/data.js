@@ -197,7 +197,7 @@ export const OWNER_FEATURES = [
 ];
 
 export const DEMO_ACCOUNTS = [
-  { role: 'Owner', email: 'admin@azcuts.com', password: 'Admin@123', lands: '/admin/dashboard' },
+  { role: 'Owner', email: 'admin@azcuts.com', password: 'admin (change in prod)', lands: '/admin/dashboard' },
   { role: 'Stylist', email: 'cristiano@azcuts.com', password: 'Staff@123', lands: '/staff/dashboard' },
   { role: 'Barber', email: 'joshua@azcuts.com', password: 'Staff@123', lands: '/staff/dashboard' },
   { role: 'Hairstylist', email: 'zayn@azcuts.com', password: 'Staff@123', lands: '/staff/dashboard' },

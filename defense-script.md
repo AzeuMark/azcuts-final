@@ -1,6 +1,6 @@
 # AzCuts — Defense Demo Script (school-compliant build)
 
-Accounts (seeded): admin `admin@azcuts.com / Admin@123` · staff
+Accounts (seeded): admin `admin@azcuts.com / admin` (change in prod) · staff
 `cristiano@azcuts.com`, `joshua@azcuts.com`, `zayn@azcuts.com` (all /
 `Staff@123`) · customers self-register on the landing page. Serve:
 `npm run dev` in `/server` (:5000) and `/client` (:3000). Mode:
