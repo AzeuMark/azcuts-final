@@ -4,6 +4,8 @@ const ApiError = require('../utils/ApiError');
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
 const Settings = require('../models/Settings');
+const Sale = require('../models/Sale');
+const Product = require('../models/Product');
 const pricing = require('../services/pricing.service');
 const { dayjs, DEFAULT_TZ, rangeBounds } = require('../utils/datetime');
 
@@ -26,7 +28,7 @@ const dashboard = asyncHandler(async (req, res) => {
   const start = dayjs().tz(tz).startOf('day').toDate();
   const end = dayjs().tz(tz).endOf('day').toDate();
 
-  const [activeStaff, inService, bookingsToday, customersToday, salesAgg] = await Promise.all([
+  const [activeStaff, inService, bookingsToday, customersToday, salesAgg, shopSalesAgg, lowStockCount, outOfStockCount, productCount] = await Promise.all([
     User.countDocuments({ role: 'staff', status: { $in: ['active', 'in_service'] } }),
     Appointment.countDocuments({ status: 'in_service' }),
     Appointment.countDocuments({ scheduledStart: { $gte: start, $lte: end } }),
@@ -35,6 +37,14 @@ const dashboard = asyncHandler(async (req, res) => {
       { $match: { status: 'done', finishedAt: { $gte: start, $lte: end } } },
       { $group: { _id: null, total: { $sum: '$priceSnapshot.total' }, count: { $sum: 1 } } },
     ]),
+    // S6 (school paper: Sales/Inventory on the owner dashboard).
+    Sale.aggregate([
+      { $match: { createdAt: { $gte: start, $lte: end } } },
+      { $group: { _id: null, total: { $sum: '$total' }, count: { $sum: 1 } } },
+    ]),
+    Product.countDocuments({ $expr: { $and: [{ $gt: ['$stockQuantity', 0] }, { $lte: ['$stockQuantity', '$lowStockThreshold'] }] } }),
+    Product.countDocuments({ stockQuantity: { $lte: 0 } }),
+    Product.countDocuments({}),
   ]);
 
   return ok(res, {
@@ -45,6 +55,11 @@ const dashboard = asyncHandler(async (req, res) => {
       customersToday: customersToday.length,
       salesToday: salesAgg[0]?.total || 0,
       completedToday: salesAgg[0]?.count || 0,
+      shopSalesToday: shopSalesAgg[0]?.total || 0,
+      shopSalesCountToday: shopSalesAgg[0]?.count || 0,
+      lowStockCount,
+      outOfStockCount,
+      productCount,
     },
   });
 });

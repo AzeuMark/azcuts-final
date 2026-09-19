@@ -1,6 +1,9 @@
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
+const Sale = require('../models/Sale');
+const Product = require('../models/Product');
+const Inventory = require('../models/Inventory');
 const { rangeBounds, DEFAULT_TZ } = require('../utils/datetime');
 
 function round2(n) {
@@ -130,8 +133,92 @@ const REPORT_COLUMNS = [
   'paymentStatus',
 ];
 
+// ---- S6 (school paper: Sales + Inventory reports) ----
+
+// Sales KPIs aggregated from the `sales` collection (not re-derived from
+// appointments): revenue, count, avg ticket, top products and top barbers.
+async function salesSummary(range = 'all') {
+  const tz = await getTz();
+  const bounds = rangeBounds(range, tz);
+  const match = dateMatch('createdAt', bounds);
+
+  const [totals, topProducts, topBarbers] = await Promise.all([
+    Sale.aggregate([{ $match: match }, { $group: { _id: null, revenue: { $sum: '$total' }, count: { $sum: 1 } } }]),
+    Sale.aggregate([
+      { $match: match },
+      { $unwind: '$items' },
+      { $match: { 'items.kind': 'product' } },
+      {
+        $group: {
+          _id: '$items.refId',
+          name: { $first: '$items.name' },
+          qty: { $sum: '$items.qty' },
+          revenue: { $sum: { $multiply: ['$items.price', '$items.qty'] } },
+        },
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: 5 },
+      { $project: { _id: 0, productId: '$_id', name: 1, qty: 1, revenue: 1 } },
+    ]),
+    Sale.aggregate([
+      { $match: { ...match, barber: { $ne: null } } },
+      { $group: { _id: '$barber', count: { $sum: 1 }, revenue: { $sum: '$total' } } },
+      { $sort: { revenue: -1 } },
+      { $limit: 5 },
+      { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'staff' } },
+      { $unwind: { path: '$staff', preserveNullAndEmptyArrays: true } },
+      { $project: { _id: 0, staffId: '$_id', name: '$staff.fullName', count: 1, revenue: 1 } },
+    ]),
+  ]);
+
+  const revenue = round2(totals[0]?.revenue || 0);
+  const count = totals[0]?.count || 0;
+  return { range, tz, sales: count, revenue, avgTicket: count ? round2(revenue / count) : 0, topProducts, topBarbers };
+}
+
+// Inventory report: current levels, low/out counts, and recent movements.
+async function inventoryReport(limit = 50) {
+  const products = await Product.find({}).sort({ name: 1 });
+  const levels = products.map((p) => ({
+    productId: String(p._id),
+    name: p.name,
+    price: p.price,
+    stockQuantity: p.stockQuantity,
+    lowStockThreshold: p.lowStockThreshold,
+    isActive: p.isActive,
+    availability: p.stockQuantity <= 0 ? 'out' : p.stockQuantity <= p.lowStockThreshold ? 'low' : 'in',
+  }));
+  const movements = await Inventory.find({})
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .populate('product', 'name')
+    .populate('byUser', 'fullName role')
+    .then((moves) =>
+      moves.map((m) => ({
+        product: m.product?.name || '',
+        type: m.type,
+        change: m.change,
+        reason: m.reason || '',
+        recordedBy: m.byUser?.fullName || '',
+        createdAt: m.createdAt ? m.createdAt.toISOString() : '',
+      }))
+    );
+  return {
+    generatedAt: new Date().toISOString(),
+    products: products.length,
+    lowStock: levels.filter((l) => l.availability === 'low').length,
+    outOfStock: levels.filter((l) => l.availability === 'out').length,
+    levels,
+    movements,
+  };
+}
+
+const SALES_REPORT_COLUMNS = ['saleNo', 'createdAt', 'customer', 'barber', 'recordedBy', 'items', 'total', 'paymentMethod', 'appointment'];
+
+const INVENTORY_REPORT_COLUMNS = ['name', 'price', 'stockQuantity', 'lowStockThreshold', 'availability', 'isActive'];
+
 // Detailed per-appointment rows for export + the KPI summary.
-async function report(range = 'all') {
+async function report(range = 'all', kind = 'appointments') {
   const tz = await getTz();
   const bounds = rangeBounds(range, tz);
 
@@ -158,7 +245,39 @@ async function report(range = 'all') {
   }));
 
   const kpis = await summary(range);
-  return { range, tz, generatedAt: new Date().toISOString(), summary: kpis, rows };
+  return { range, tz, generatedAt: new Date().toISOString(), kind, summary: kpis, rows };
 }
 
-module.exports = { summary, salesSeries, report, REPORT_COLUMNS };
+// kind-aware report entrypoint (S6): appointments (default, legacy shape),
+// sales (per-sale rows + sales KPIs), inventory (levels + movements).
+async function reportByKind(range = 'all', kind = 'appointments') {
+  if (kind === 'sales') {
+    const tz = await getTz();
+    const bounds = rangeBounds(range, tz);
+    const sales = await Sale.find(dateMatch('createdAt', bounds))
+      .sort({ createdAt: -1 })
+      .populate('customer', 'fullName')
+      .populate('barber', 'fullName')
+      .populate('recordedBy', 'fullName role');
+    const rows = sales.map((s) => ({
+      saleNo: s.saleNo,
+      createdAt: s.createdAt ? s.createdAt.toISOString() : '',
+      customer: s.customer?.fullName || '',
+      barber: s.barber?.fullName || '',
+      recordedBy: s.recordedBy?.fullName || '',
+      items: s.items.map((i) => `${i.qty}x ${i.name} @${i.price}`).join('; '),
+      total: s.total,
+      paymentMethod: s.paymentMethod,
+      appointment: s.appointment ? String(s.appointment) : '',
+    }));
+    const kpis = await salesSummary(range);
+    return { range, tz, generatedAt: new Date().toISOString(), kind, summary: kpis, rows };
+  }
+  if (kind === 'inventory') {
+    const inv = await inventoryReport();
+    return { ...inv, kind, columns: INVENTORY_REPORT_COLUMNS };
+  }
+  return report(range, 'appointments');
+}
+
+module.exports = { summary, salesSeries, report, reportByKind, REPORT_COLUMNS, salesSummary, inventoryReport, SALES_REPORT_COLUMNS, INVENTORY_REPORT_COLUMNS };
