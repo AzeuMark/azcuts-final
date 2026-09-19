@@ -8,6 +8,7 @@ import { Tabs } from '../../components/ui/Tabs';
 import Skeleton from '../../components/ui/Skeleton';
 import Reveal from '../../components/ui/Reveal';
 import { useSettingsPublic } from '../../hooks/useSettingsPublic';
+import { useFeatures } from '../../hooks/useFeatures';
 import { useAuth } from '../../hooks/useAuth';
 import { formatMoney } from '../../utils/formatMoney';
 import { formatClock } from '../../utils/datetime';
@@ -98,6 +99,10 @@ function Eyebrow({ children }) {
 export default function Landing() {
   const { data, isLoading } = useSettingsPublic();
   const { isAuthenticated, role } = useAuth();
+  // S9: demo stats band + testimonials hide behind flags in school mode.
+  const { isEnabled } = useFeatures();
+  const statsOn = isEnabled('landingCms.statsBand');
+  const storiesOn = isEnabled('landingCms.testimonials');
   const [category, setCategory] = useState('all');
   const [authMode, setAuthMode] = useState(null); // 'login' | 'register' | null
 
@@ -185,8 +190,9 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Stats bar */}
-        <section className="border-b border-line bg-surface">
+        {/* Stats bar (demo content — hidden in school mode) */}
+        {statsOn && (
+          <section className="border-b border-line bg-surface">
           <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 gap-8 text-center md:grid-cols-4">
               {stats.map((s, i) => (
@@ -204,7 +210,8 @@ export default function Landing() {
               ))}
             </div>
           </div>
-        </section>
+          </section>
+        )}
 
         {/* Services — real data from the API */}
         <section id="services" className="scroll-mt-20 border-b border-line">
@@ -357,8 +364,9 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Stories */}
-        <section id="stories" className="scroll-mt-20 border-b border-line">
+        {/* Stories (demo testimonials — hidden in school mode) */}
+        {storiesOn && (
+          <section id="stories" className="scroll-mt-20 border-b border-line">
           <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="mb-12 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
               <Reveal direction="left">
@@ -400,7 +408,8 @@ export default function Landing() {
               ))}
             </div>
           </div>
-        </section>
+          </section>
+        )}
 
         {/* Developers — small credits row, distinct from the barbers */}
         <section id="developers" className="scroll-mt-20 border-b border-line">

@@ -13,6 +13,7 @@ import Modal from '../../components/ui/Modal';
 import adminApi from '../../api/admin.api';
 import appointmentApi from '../../api/appointment.api';
 import { useBookableStaff } from '../../hooks/useBookableStaff';
+import { useFeatures } from '../../hooks/useFeatures';
 import { getApiErrorMessage } from '../../config/axios';
 import { formatMoney } from '../../utils/formatMoney';
 import { formatDateTime } from '../../utils/datetime';
@@ -47,6 +48,9 @@ export default function AppointmentHistory() {
   const [limit, setLimit] = useState(20);
   const [discountTarget, setDiscountTarget] = useState(null);
   const [assignTarget, setAssignTarget] = useState(null);
+  // S9: per-booking discounts are a non-paper extra — hidden in school mode.
+  const { isEnabled } = useFeatures();
+  const discountOn = isEnabled('pricing.discountPercent');
 
   // Debounce the search box so we don't fire a request on every keystroke.
   useEffect(() => {
@@ -88,8 +92,7 @@ export default function AppointmentHistory() {
       key: 'date',
       header: 'Date',
       render: (a) => <span className="whitespace-nowrap">{formatDateTime(a.scheduledStart)}</span>,
-    },
-    {
+    },    {
       key: 'receipt',
       header: 'Receipt',
       render: (a) => <span className="font-mono text-xs text-muted">{a.receiptNo || '—'}</span>,
@@ -123,7 +126,7 @@ export default function AppointmentHistory() {
               <span className="hidden sm:inline">Assign</span>
             </Button>
           )}
-          {DISCOUNTABLE.includes(a.status) ? (
+          {discountOn && DISCOUNTABLE.includes(a.status) ? (
             <Button variant="ghost" size="sm" onClick={() => setDiscountTarget(a)} title="Set discount">
               <Percent className="h-4 w-4" />
               <span className="hidden sm:inline">Discount</span>

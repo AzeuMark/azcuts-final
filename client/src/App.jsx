@@ -7,6 +7,7 @@ import ThemeSync from './components/ThemeSync';
 import ChatWidget from './components/ChatWidget';
 import DashboardShell from './components/layout/DashboardShell';
 import Spinner from './components/ui/Spinner';
+import { useFeatures } from './hooks/useFeatures';
 
 // Code-split every page so heavy deps (e.g. recharts on Analytics, html2canvas on
 // the receipt) load only when their route is visited.
@@ -41,12 +42,16 @@ function PageFallback() {
 }
 
 // Route map — CLIENT_PLAN §2.1. Each portal is role-gated and shares DashboardShell.
+// S9: the AI assistant and real-time bridge mount only when their flags are on.
 export default function App() {
+  const { isEnabled } = useFeatures();
+  const chatOn = isEnabled('aiChatbot.enabled');
+  const realtimeOn = isEnabled('realtime.enabled');
   return (
     <>
-      <RealtimeBridge />
+      {realtimeOn && <RealtimeBridge />}
       <ThemeSync />
-      <ChatWidget />
+      {chatOn && <ChatWidget />}
       <Suspense fallback={<PageFallback />}>
         <Routes>
           {/* Public — login/register happen in the landing slide-in panel */}

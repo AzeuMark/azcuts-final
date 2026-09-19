@@ -15,6 +15,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 import { useAdminUsers } from '../../hooks/useAdmin';
 import { useSettingsPublic } from '../../hooks/useSettingsPublic';
+import { useFeatures } from '../../hooks/useFeatures';
 import { useAuth } from '../../hooks/useAuth';
 import adminApi from '../../api/admin.api';
 import { getApiErrorMessage } from '../../config/axios';
@@ -38,6 +39,10 @@ export default function UserManager() {
   const [limit, setLimit] = useState(20);
   const [editing, setEditing] = useState(null); // user object or 'new'
   const [deleteTarget, setDeleteTarget] = useState(null);
+  // S9: hard delete is a non-paper extra — deactivate (status) is the paper action.
+  const { isEnabled } = useFeatures();
+  const deleteOn = isEnabled('userAccountManagement.deleteUsers');
+  const nicknamesOn = isEnabled('nicknames.enabled');
 
   // Debounce the search box so we don't refetch on every keystroke.
   useEffect(() => {
@@ -96,21 +101,23 @@ export default function UserManager() {
           <Button variant="ghost" size="sm" onClick={() => setEditing(u)} title="Edit">
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDeleteTarget(u)}
-            disabled={u._id === me?.id || u.role === 'admin'}
-            title={
-              u._id === me?.id
-                ? "You can't delete yourself"
-                : u.role === 'admin'
-                  ? 'Admin accounts cannot be deleted'
-                  : 'Delete'
-            }
-          >
-            <Trash2 className="h-4 w-4 text-danger" />
-          </Button>
+          {deleteOn && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteTarget(u)}
+              disabled={u._id === me?.id || u.role === 'admin'}
+              title={
+                u._id === me?.id
+                  ? "You can't delete yourself"
+                  : u.role === 'admin'
+                    ? 'Admin accounts cannot be deleted'
+                    : 'Delete'
+              }
+            >
+              <Trash2 className="h-4 w-4 text-danger" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -326,7 +333,7 @@ function UserFormModal({ user, nicknames, onClose, onSaved }) {
             <option value="admin">Admin</option>
           </Select>
         </div>
-        {role === 'staff' && (
+        {role === 'staff' && nicknamesOn && (
           <Select label="Nickname" {...register('nickname')}>
             <option value="">Select a title…</option>
             {nicknames.map((n) => (

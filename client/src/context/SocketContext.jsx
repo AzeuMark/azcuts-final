@@ -2,6 +2,7 @@ import { createContext, useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { getAccessToken } from '../config/axios';
 import { useAuth } from '../hooks/useAuth';
+import { useFeatures } from '../hooks/useFeatures';
 
 const SocketContext = createContext(null);
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -13,11 +14,14 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
  */
 export function SocketProvider({ children }) {
   const { isAuthenticated } = useAuth();
+  // S9: no socket at all when realtime is off (reactive — reconnects if flags change).
+  const { isEnabled, isLoading: flagsLoading } = useFeatures();
+  const socketOn = !flagsLoading && isEnabled('realtime.socketIo');
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !socketOn) {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -46,7 +50,7 @@ export function SocketProvider({ children }) {
       socketRef.current = null;
       setConnected(false);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, socketOn]);
 
   const value = useMemo(
     () => ({

@@ -7,6 +7,7 @@ import Spinner from '../ui/Spinner';
 import cn from '../../utils/cn';
 import { useAuth } from '../../hooks/useAuth';
 import { useSettingsPublic } from '../../hooks/useSettingsPublic';
+import { useFeatures } from '../../hooks/useFeatures';
 
 const SIDEBAR_KEY = 'az-sidebar-collapsed';
 
@@ -37,12 +38,14 @@ export default function DashboardShell() {
       return next;
     });
 
-  // System-mode gate (SERVER_PLAN §2.5): maintenance blocks customers; offline
-  // blocks customers + staff. Admins always pass. The API enforces this too.
+  // System-mode gate — S9: skipped when the systemMode flag is off (school
+  // mode is always online; the paper has no maintenance modes).
+  const { isEnabled } = useFeatures();
   const mode = settings?.systemMode;
   const blocked =
-    (mode === 'maintenance' && role === 'user') ||
-    (mode === 'offline' && (role === 'user' || role === 'staff'));
+    isEnabled('systemMode.enabled') &&
+    ((mode === 'maintenance' && role === 'user') ||
+      (mode === 'offline' && (role === 'user' || role === 'staff')));
   if (blocked) return <Navigate to="/maintenance" replace />;
 
   return (

@@ -8,6 +8,7 @@ import Button from './ui/Button';
 import ImagePicker from './ui/ImagePicker';
 import { useAuth } from '../hooks/useAuth';
 import { useSettingsPublic } from '../hooks/useSettingsPublic';
+import { useFeatures } from '../hooks/useFeatures';
 import userApi from '../api/user.api';
 import { getApiErrorMessage } from '../config/axios';
 import { serverAsset } from '../utils/serverAsset';
@@ -15,6 +16,9 @@ import { serverAsset } from '../utils/serverAsset';
 export default function AccountSettings({ showNickname = false }) {
   const { user, setUser } = useAuth();
   const { data: settings } = useSettingsPublic();
+  // S9: nicknames are a non-paper extra — hidden in school mode.
+  const { isEnabled } = useFeatures();
+  const showNicknameGate = showNickname && isEnabled('nicknames.enabled');
   const nicknames = settings?.nicknames || [];
 
   const profileForm = useForm({
@@ -39,7 +43,7 @@ export default function AccountSettings({ showNickname = false }) {
         phone: values.phone || undefined,
         address: values.address || undefined,
       };
-      if (showNickname && values.nickname) payload.nickname = values.nickname;
+      if (showNicknameGate && values.nickname) payload.nickname = values.nickname;
       return userApi.updateProfile(payload);
     },
     onSuccess: (res) => {
@@ -140,7 +144,7 @@ export default function AccountSettings({ showNickname = false }) {
             />
             <Input label="Phone" type="tel" {...profileForm.register('phone')} />
             <Input label="Address" {...profileForm.register('address')} />
-            {showNickname && (
+            {showNicknameGate && (
               <Select label="Nickname" {...profileForm.register('nickname')}>
                 <option value="">Select a title…</option>
                 {nicknames.map((n) => (

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
+import { useFeatures } from '../hooks/useFeatures';
 import userApi from '../api/user.api';
 
 /*
@@ -16,6 +17,9 @@ import userApi from '../api/user.api';
 export default function ThemeSync() {
   const { isAuthenticated, user, setUser } = useAuth();
   const { theme, setTheme } = useTheme();
+  // S9: server-persisted theme is a non-paper extra — local-only in school mode.
+  const { isEnabled, isLoading: flagsLoading } = useFeatures();
+  const serverThemeOn = isEnabled('theme.persistServer');
   const reconciledId = useRef(null);
 
   const persist = (next, current) => {
@@ -27,8 +31,9 @@ export default function ThemeSync() {
       });
   };
 
-  // Reconcile once per authenticated user.
+  // Reconcile once per authenticated user (skipped entirely in school mode).
   useEffect(() => {
+    if (flagsLoading || !serverThemeOn) return;
     if (!isAuthenticated || !user) {
       reconciledId.current = null;
       return;
@@ -45,8 +50,9 @@ export default function ThemeSync() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user]);
 
-  // Persist later, user-initiated theme switches.
+  // Persist later, user-initiated theme switches (school mode: local only).
   useEffect(() => {
+    if (!serverThemeOn) return;
     if (!isAuthenticated || !user) return;
     const uid = user._id || user.id;
     if (reconciledId.current !== uid) return; // wait for the initial reconcile

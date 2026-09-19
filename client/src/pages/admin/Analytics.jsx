@@ -10,6 +10,7 @@ import { Tabs } from '../../components/ui/Tabs';
 import { ChartCard, SalesLine, HorizontalBars, StatusPie } from '../../components/ChartPanel';
 
 import { useAnalyticsSummary, useAnalyticsSales, useSalesSummary, useInventoryReport } from '../../hooks/useAnalytics';
+import { useFeatures } from '../../hooks/useFeatures';
 import analyticsApi from '../../api/analytics.api';
 import { getApiErrorMessage } from '../../config/axios';
 import { formatMoney, formatMoneyCompact } from '../../utils/formatMoney';
@@ -48,6 +49,9 @@ export default function Analytics() {
   const salesQ = useAnalyticsSales(range);
   const salesSummaryQ = useSalesSummary(range);
   const inventoryQ = useInventoryReport();
+  // S9: charts are a non-paper extra — tables + exports carry the school demo.
+  const { isEnabled } = useFeatures();
+  const chartsOn = isEnabled('reports.charts');
   const s = summaryQ.data || {};
   const loading = summaryQ.isLoading;
 
@@ -116,20 +120,57 @@ export default function Analytics() {
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <ChartCard title="Sales over time" className="lg:col-span-2">
-              <SalesLine data={salesQ.data?.series || []} moneyFmt={moneyFmt} />
-            </ChartCard>
+            {chartsOn && (
+              <ChartCard title="Sales over time" className="lg:col-span-2">
+                <SalesLine data={salesQ.data?.series || []} moneyFmt={moneyFmt} />
+              </ChartCard>
+            )}
 
             <ChartCard title="Top services (revenue)">
-              <HorizontalBars data={s.topServices || []} dataKey="revenue" color="#E11D48" moneyFmt={moneyFmt} />
+              {chartsOn ? (
+                <HorizontalBars data={s.topServices || []} dataKey="revenue" color="#E11D48" moneyFmt={moneyFmt} />
+              ) : (
+                <DataTable
+                  columns={[
+                    { key: 'name', header: 'Service' },
+                    { key: 'count', header: 'Done', align: 'right' },
+                    { key: 'revenue', header: 'Revenue', align: 'right', render: (t) => formatMoney(t.revenue) },
+                  ]}
+                  data={s.topServices || []}
+                  loading={loading}
+                />
+              )}
             </ChartCard>
 
             <ChartCard title="Status breakdown">
-              <StatusPie breakdown={s.statusBreakdown || {}} />
+              {chartsOn ? (
+                <StatusPie breakdown={s.statusBreakdown || {}} />
+              ) : (
+                <DataTable
+                  columns={[
+                    { key: 'status', header: 'Status' },
+                    { key: 'count', header: 'Count', align: 'right' },
+                  ]}
+                  data={Object.entries(s.statusBreakdown || {}).map(([status, count]) => ({ status, count }))}
+                  loading={loading}
+                />
+              )}
             </ChartCard>
 
             <ChartCard title="Revenue by staff" className="lg:col-span-2">
-              <HorizontalBars data={s.topStaff || []} dataKey="revenue" color="#0EA5E9" moneyFmt={moneyFmt} />
+              {chartsOn ? (
+                <HorizontalBars data={s.topStaff || []} dataKey="revenue" color="#0EA5E9" moneyFmt={moneyFmt} />
+              ) : (
+                <DataTable
+                  columns={[
+                    { key: 'name', header: 'Barber', render: (t) => t.name || '—' },
+                    { key: 'count', header: 'Done', align: 'right' },
+                    { key: 'revenue', header: 'Revenue', align: 'right', render: (t) => formatMoney(t.revenue) },
+                  ]}
+                  data={s.topStaff || []}
+                  loading={loading}
+                />
+              )}
             </ChartCard>
           </div>
         </>

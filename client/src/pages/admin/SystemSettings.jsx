@@ -13,6 +13,7 @@ import Spinner from '../../components/ui/Spinner';
 import cn from '../../utils/cn';
 
 import settingsApi from '../../api/settings.api';
+import { useFeatures } from '../../hooks/useFeatures';
 import { getApiErrorMessage } from '../../config/axios';
 
 const DAYS = [
@@ -51,19 +52,26 @@ export default function SystemSettings() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="System Settings" description="System mode, localization, hours, nicknames, and shop info." />
+      <PageHeader title="System Settings" description="Localization, hours, and shop info." />
       <SettingsForm settings={settings} onSaved={() => {
         qc.invalidateQueries({ queryKey: ['settings'] });
       }} />
-      <NicknameManager
-        nicknames={settings.nicknames || []}
-        onChanged={() => qc.invalidateQueries({ queryKey: ['settings'] })}
-      />
+      <NicknameGate nicknames={settings.nicknames || []} onChanged={() => qc.invalidateQueries({ queryKey: ['settings'] })} />
     </div>
   );
 }
 
+// S9: nicknames are a non-paper extra — hidden in school mode.
+function NicknameGate({ nicknames, onChanged }) {
+  const { isEnabled } = useFeatures();
+  if (!isEnabled('nicknames.enabled')) return null;
+  return <NicknameManager nicknames={nicknames} onChanged={onChanged} />;
+}
+
 function SettingsForm({ settings, onSaved }) {
+  // S9: system mode is a non-paper extra — hidden in school mode (always online).
+  const { isEnabled } = useFeatures();
+  const modeOn = isEnabled('systemMode.enabled');
   const { register, handleSubmit, watch, setValue } = useForm({
     defaultValues: {
       systemMode: settings.systemMode || 'online',
@@ -127,12 +135,13 @@ function SettingsForm({ settings, onSaved }) {
 
   return (
     <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="space-y-6" noValidate>
-      {/* System mode */}
-      <Card>
-        <CardHeader>
-          <CardTitle>System mode</CardTitle>
-          <CardDescription>Controls who can access the system.</CardDescription>
-        </CardHeader>
+      {/* System mode (hidden in school mode) */}
+      {modeOn && (
+        <Card>
+          <CardHeader>
+            <CardTitle>System mode</CardTitle>
+            <CardDescription>Controls who can access the system.</CardDescription>
+          </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-3">
             {MODES.map((m) => {
@@ -158,7 +167,8 @@ function SettingsForm({ settings, onSaved }) {
             })}
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      )}
 
       {/* Localization & pricing */}
       <Card>
@@ -172,7 +182,9 @@ function SettingsForm({ settings, onSaved }) {
             <Input label="Region" {...register('region')} />
             <Input label="Country" {...register('country')} />
             <Input label="Currency" {...register('currency')} />
-            <Input label="Tax rate (%)" type="number" min={0} max={100} step="0.01" {...register('taxRatePercent')} />
+            {isEnabled('pricing.taxRate') && (
+              <Input label="Tax rate (%)" type="number" min={0} max={100} step="0.01" {...register('taxRatePercent')} />
+            )}
             <Input label="Slot step (min)" type="number" min={5} max={240} step="5" {...register('slotStepMinutes')} />
           </div>
         </CardContent>

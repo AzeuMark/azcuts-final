@@ -20,6 +20,7 @@ import { Tabs } from '../../components/ui/Tabs';
 import inventoryApi from '../../api/inventory.api';
 import productApi from '../../api/product.api';
 import { useStockLevels, useStockMovements } from '../../hooks/useStock';
+import { useFeatures } from '../../hooks/useFeatures';
 import { getApiErrorMessage } from '../../config/axios';
 import { formatMoney } from '../../utils/formatMoney';
 import { formatDateTime } from '../../utils/datetime';
@@ -45,26 +46,27 @@ function usePagedRows(rows, search, page, limit) {
 
 export default function Inventory() {
   const [tab, setTab] = useState('services');
+  // S9: extras are a non-paper extra — the tab hides in school mode.
+  const { isEnabled } = useFeatures();
+  const extrasOn = isEnabled('extras.enabled');
+  const tabs = [
+    { value: 'services', label: 'Services' },
+    { value: 'products', label: 'Products' },
+    { value: 'stock', label: 'Stock' },
+    ...(extrasOn ? [{ value: 'extras', label: 'Extras' }] : []),
+  ];
+  const activeTab = tabs.some((t) => t.value === tab) ? tab : 'services';
   return (
     <div>
       <PageHeader title="Inventory" description="Manage services, products, stock, prices, and images." />
       <div className="mb-4">
-        <Tabs
-          value={tab}
-          onChange={setTab}
-          tabs={[
-            { value: 'services', label: 'Services' },
-            { value: 'products', label: 'Products' },
-            { value: 'stock', label: 'Stock' },
-            { value: 'extras', label: 'Extras' },
-          ]}
-        />
+        <Tabs value={activeTab} onChange={setTab} tabs={tabs} />
       </div>
-      {tab === 'services' ? (
+      {activeTab === 'services' ? (
         <ServicesPanel />
-      ) : tab === 'products' ? (
+      ) : activeTab === 'products' ? (
         <ProductsPanel />
-      ) : tab === 'stock' ? (
+      ) : activeTab === 'stock' ? (
         <StockPanel />
       ) : (
         <ExtrasPanel />

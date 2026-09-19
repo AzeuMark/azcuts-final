@@ -25,6 +25,7 @@ import { Tabs } from '../../components/ui/Tabs';
 import EmptyState from '../../components/ui/EmptyState';
 
 import { useBooking, STEPS } from '../../hooks/useBooking';
+import { useFeatures } from '../../hooks/useFeatures';
 import { useServices, useExtras } from '../../hooks/useServices';
 import { useSlots } from '../../hooks/useSlots';
 import { useBookableStaff } from '../../hooks/useBookableStaff';
@@ -39,10 +40,10 @@ import { formatDateTime, formatTime, isoDate } from '../../utils/datetime';
 import { downloadReceiptPng } from '../../utils/receiptPng';
 import cn from '../../utils/cn';
 
-function Stepper({ step }) {
+function Stepper({ step, labels }) {
   return (
     <ol className="flex items-center gap-2">
-      {STEPS.map((label, i) => {
+      {labels.map((label, i) => {
         const done = i < step;
         const active = i === step;
         return (
@@ -69,7 +70,7 @@ function Stepper({ step }) {
                 {label}
               </span>
             </div>
-            {i < STEPS.length - 1 && <span className="h-px flex-1 bg-line" />}
+            {i < labels.length - 1 && <span className="h-px flex-1 bg-line" />}
           </li>
         );
       })}
@@ -84,6 +85,24 @@ export default function BookWizard() {
 
   const { data: settings } = useSettingsPublic();
   const currency = settings?.currency || 'PHP';
+
+  // S9 school gating: extras step, one-booking gate, and PNG download hide
+  // behind configuration.json flags (server enforces the same rules).
+  const { isEnabled } = useFeatures();
+  const extrasOn = isEnabled('extras.enabled');
+  const oneBookingLimitOn = isEnabled('appointmentManagement.oneActiveBookingLimit');
+  const pngOn = isEnabled('receipts.downloadPng');
+  const visibleSteps = extrasOn ? STEPS : STEPS.filter((_, i) => i !== 1);
+  const visibleIndex = extrasOn ? booking.step : booking.step === 0 ? 0 : booking.step - 1;
+  // Internal step indices stay 0-4; navigation skips the hidden extras step.
+  const goNext = () => {
+    if (!extrasOn && booking.step === 0) booking.setStep(2);
+    else booking.next();
+  };
+  const goBack = () => {
+    if (!extrasOn && booking.step === 2) booking.setStep(0);
+    else booking.back();
+  };
 
   const servicesQuery = useServices();
   const extrasQuery = useExtras();
@@ -106,7 +125,7 @@ export default function BookWizard() {
   const slotsQuery = useSlots({
     serviceId: booking.service?._id,
     date: booking.date,
-    extras: booking.extras.map((e) => e._id),
+    extras: extrasOn ? booking.extras.map((e) => e._id) : [],
     staffId: booking.staff === 'auto' ? null : booking.staff,
   });
 
@@ -126,7 +145,7 @@ export default function BookWizard() {
       appointmentApi
         .create({
           serviceId: booking.service._id,
-          extras: booking.extras.map((e) => e._id),
+          extras: extrasOn ? booking.extras.map((e) => e._id) : [],
           scheduledStart: booking.slot.start,
           staffId: booking.staff === 'auto' ? undefined : booking.staff,
           paymentMethod: 'cash',
@@ -200,10 +219,12 @@ export default function BookWizard() {
         </div>
 
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-          <Button onClick={handleDownload} loading={downloading}>
-            <Download className="h-4 w-4" />
-            Download receipt
-          </Button>
+          {pngOn && (
+            <Button onClick={handleDownload} loading={downloading}>
+              <Download className="h-4 w-4" />
+              Download receipt
+            </Button>
+          )}
           <Button variant="outline" onClick={startAnother}>
             Book another
           </Button>
@@ -216,14 +237,15 @@ export default function BookWizard() {
   }
 
   // -------------------------------------------------- ACTIVE BOOKING GATE
-  // If the customer already has a booking in progress, they can't start another
-  // until it finishes or is cancelled.
-  if (activeBooking) {
+  // S9: only enforced when the oneActiveBookingLimit flag is on (off in school mode).
+  if (activeBooking && oneBookingLimitOn) {
     return (
       <div>
         <PageHeader
           title="Book a service"
-          description="Choose a service, add extras, pick a time, and confirm."
+          description={
+            extrasOn ? 'Choose a service, add extras, pick a time, and confirm.' : 'Choose a service, pick a time, and confirm.'
+          }
         />
         <div className="mx-auto max-w-xl">
           <div className="rounded-2xl border border-line bg-surface p-6 text-center shadow-card">
@@ -269,11 +291,13 @@ export default function BookWizard() {
     <div>
       <PageHeader
         title="Book a service"
-        description="Choose a service, add extras, pick a time, and confirm."
+        description={
+          extrasOn ? 'Choose a service, add extras, pick a time, and confirm.' : 'Choose a service, pick a time, and confirm.'
+        }
       />
 
       <div className="mb-8">
-        <Stepper step={booking.step} />
+        <Stepper step={visibleIndex} labels={visibleSteps} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -316,8 +340,8 @@ export default function BookWizard() {
             </div>
           )}
 
-          {/* Step 1 — Extras */}
-          {booking.step === 1 && (
+          {/* Step 1 — Extras (hidden in school mode) */}
+          {extrasOn && booking.step === 1 && (
             <div>
               <h2 className="mb-1 text-lg font-semibold text-ink">Add extras</h2>
               <p className="mb-4 text-sm text-muted">Optional add-ons. Skip if you don&apos;t need any.</p>
@@ -418,14 +442,16 @@ export default function BookWizard() {
               <h2 className="mb-4 text-lg font-semibold text-ink">Review &amp; confirm</h2>
               <div className="space-y-3 rounded-2xl border border-line bg-surface p-5 shadow-card">
                 <Row label="Service" value={booking.service?.name} />
-                <Row
-                  label="Extras"
-                  value={
-                    booking.extras.length
-                      ? booking.extras.map((e) => e.name).join(', ')
-                      : 'None'
-                  }
-                />
+                {extrasOn && (
+                  <Row
+                    label="Extras"
+                    value={
+                      booking.extras.length
+                        ? booking.extras.map((e) => e.name).join(', ')
+                        : 'None'
+                    }
+                  />
+                )}
                 <Row
                   label="Barber"
                   value={
@@ -461,11 +487,11 @@ export default function BookWizard() {
           {/* Nav */}
           {booking.step < 4 && (
             <div className="mt-8 flex items-center justify-between">
-              <Button variant="ghost" onClick={booking.back} disabled={booking.step === 0}>
+              <Button variant="ghost" onClick={goBack} disabled={booking.step === 0}>
                 <ChevronLeft className="h-4 w-4" />
                 Back
               </Button>
-              <Button onClick={booking.next} disabled={!canProceed}>
+              <Button onClick={goNext} disabled={!canProceed}>
                 Next
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -473,7 +499,7 @@ export default function BookWizard() {
           )}
           {booking.step === 4 && (
             <div className="mt-4">
-              <Button variant="ghost" onClick={booking.back}>
+              <Button variant="ghost" onClick={goBack}>
                 <ChevronLeft className="h-4 w-4" />
                 Back
               </Button>
@@ -498,12 +524,13 @@ export default function BookWizard() {
                   <dd className="tnum text-ink">{formatMoney(booking.service.price, currency)}</dd>
                 </div>
               )}
-              {booking.extras.map((e) => (
-                <div key={e._id} className="flex items-center justify-between gap-3">
-                  <dt className="text-muted">+ {e.name}</dt>
-                  <dd className="tnum text-ink">{formatMoney(e.price, currency)}</dd>
-                </div>
-              ))}
+              {extrasOn &&
+                booking.extras.map((e) => (
+                  <div key={e._id} className="flex items-center justify-between gap-3">
+                    <dt className="text-muted">+ {e.name}</dt>
+                    <dd className="tnum text-ink">{formatMoney(e.price, currency)}</dd>
+                  </div>
+                ))}
               {booking.slot && (
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-muted">Time</dt>

@@ -19,6 +19,7 @@ import { Tabs } from '../../components/ui/Tabs';
 
 import { useMyAppointments } from '../../hooks/useMyAppointments';
 import { useSocketEvent } from '../../hooks/useSocketEvent';
+import { useFeatures } from '../../hooks/useFeatures';
 import appointmentApi from '../../api/appointment.api';
 import { getApiErrorMessage } from '../../config/axios';
 import { formatMoney } from '../../utils/formatMoney';
@@ -48,6 +49,12 @@ export default function History() {
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState('');
   const [receiptId, setReceiptId] = useState(null);
+
+  // S9 school gating: ratings + PNG download hide behind flags.
+  const { isEnabled } = useFeatures();
+  const ratingsOn = isEnabled('ratings.enabled');
+  const pngOn = isEnabled('receipts.downloadPng');
+  const reasonRequired = isEnabled('appointmentManagement.cancelWithReason');
 
   const { data, isLoading, isError } = useMyAppointments({
     status: status === 'all' ? undefined : status,
@@ -95,13 +102,16 @@ export default function History() {
   };
 
   // Real-time: when one of my appointments flips to done, auto-open the rating
-  // prompt once it appears (unrated) in the refreshed list.
+  // prompt (S9: skipped when ratings are disabled).
   const [autoRateId, setAutoRateId] = useState(null);
   useSocketEvent(
     'appointment:updated',
-    useCallback((payload) => {
-      if (payload?.status === 'done' && payload?.id) setAutoRateId(payload.id);
-    }, [])
+    useCallback(
+      (payload) => {
+        if (ratingsOn && payload?.status === 'done' && payload?.id) setAutoRateId(payload.id);
+      },
+      [ratingsOn]
+    )
   );
   useEffect(() => {
     if (!autoRateId) return;
@@ -141,7 +151,7 @@ export default function History() {
             <Receipt className="h-4 w-4" />
             <span className="hidden sm:inline">Receipt</span>
           </Button>
-          {a.status === 'done' && (
+          {a.status === 'done' && ratingsOn && (
             <Button
               variant={a.rating ? 'ghost' : 'subtle'}
               size="sm"
@@ -167,7 +177,9 @@ export default function History() {
     <div>
       <PageHeader
         title="My Bookings"
-        description="Track your appointments, cancel, rate, and view receipts."
+        description={
+          ratingsOn ? 'Track your appointments, cancel, rate, and view receipts.' : 'Track your appointments, cancel, and view receipts.'
+        }
       />
 
       <div className="mb-4">
@@ -210,36 +222,37 @@ export default function History() {
         open={Boolean(cancelTarget)}
         onClose={closeCancel}
         onConfirm={() => {
-          if (!cancelReason.trim()) {
+          if (reasonRequired && !cancelReason.trim()) {
             toast.error('Please enter a reason');
             return;
           }
           cancelMutation.mutate();
         }}
         title="Cancel this booking?"
-        description="Let us know why. This can't be undone."
+        description={reasonRequired ? 'Let us know why. This can\u2019t be undone.' : 'This can\u2019t be undone.'}
         confirmLabel="Cancel booking"
         cancelLabel="Keep it"
         tone="danger"
         loading={cancelMutation.isPending}
       >
         <Textarea
-          label="Reason"
+          label={reasonRequired ? 'Reason' : 'Reason (optional)'}
           placeholder="e.g. Schedule conflict"
           rows={3}
           value={cancelReason}
           onChange={(e) => setCancelReason(e.target.value)}
         />
-        {!cancelReason.trim() && (
+        {reasonRequired && !cancelReason.trim() && (
           <p className="mt-2 text-xs text-muted">A reason is required to cancel.</p>
         )}
       </ConfirmDialog>
 
-      {/* Rate modal */}
-      <Modal
-        open={Boolean(rateTarget)}
-        onClose={closeRate}
-        title={rateTarget?.rating ? 'Edit your rating' : 'Rate your visit'}
+      {/* Rate modal (hidden in school mode) */}
+      {ratingsOn && (
+        <Modal
+          open={Boolean(rateTarget)}
+          onClose={closeRate}
+          title={rateTarget?.rating ? 'Edit your rating' : 'Rate your visit'}
         description={
           rateTarget?.assignedStaff?.fullName
             ? `How was your service with ${rateTarget.assignedStaff.fullName}?`
@@ -268,15 +281,16 @@ export default function History() {
             onChange={(e) => setComment(e.target.value)}
           />
         </div>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Receipt modal */}
-      <ReceiptModal id={receiptId} onClose={() => setReceiptId(null)} />
+      <ReceiptModal id={receiptId} pngOn={pngOn} onClose={() => setReceiptId(null)} />
     </div>
   );
 }
 
-function ReceiptModal({ id, onClose }) {
+function ReceiptModal({ id, pngOn, onClose }) {
   const nodeRef = useRef(null);
   const [downloading, setDownloading] = useState(false);
   const { data: receipt, isLoading } = useQuery({
@@ -307,10 +321,12 @@ function ReceiptModal({ id, onClose }) {
           <Button variant="ghost" onClick={onClose}>
             Close
           </Button>
-          <Button onClick={handleDownload} loading={downloading} disabled={!receipt}>
-            <Download className="h-4 w-4" />
-            Download
-          </Button>
+          {pngOn && (
+            <Button onClick={handleDownload} loading={downloading} disabled={!receipt}>
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+          )}
         </>
       }
     >
