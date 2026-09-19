@@ -96,3 +96,9 @@ key as an env var and call
 `POST https://generativelanguage.googleapis.com/v1beta/models/<model>:generateContent`,
 then save the returned base64 `inlineData` into
 `client/src/pages/public/images/services/` and attach via the admin UI.
+
+## Reverted 2026-09-19
+
+Skin Fade + Hair Color removed again (seed + dev DB) — owner decision after
+AI image generation proved impossible (zero key quota, fallback service down)
+and imageless services were not wanted. Catalog back to the 4 real services.

@@ -332,7 +332,7 @@ export default function Landing() {
                           src={serverAsset(barber.avatar)}
                           alt={barber.fullName}
                           loading="lazy"
-                          className="h-full w-full object-cover grayscale transition duration-300 group-hover:grayscale-0"
+                          className="h-full w-full object-cover grayscale transition duration-300 group-hover:scale-[1.07] group-hover:grayscale-0"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand/20 via-surface-2 to-accent/10">
