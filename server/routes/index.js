@@ -24,6 +24,7 @@ router.use('/users', require('./user.routes')); // Phase 6 — self profile
 router.use('/', require('./inventory.routes')); // Phase 2 — /services + /extras
 router.use('/', require('./product.routes')); // S2 — /products (school paper)
 router.use('/', require('./stock.routes')); // S3 — /inventory/* (school paper)
+router.use('/', require('./sales.routes')); // S4 — /sales (school paper)
 router.use('/appointments', require('./appointment.routes')); // Phase 3-4
 router.use('/staff', require('./staff.routes')); // Phase 4
 router.use('/admin', require('./admin.routes')); // Phase 6

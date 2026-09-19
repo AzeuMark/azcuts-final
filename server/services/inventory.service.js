@@ -5,7 +5,7 @@ const Inventory = require('../models/Inventory');
 // Central stock writer (S3). Every mutation goes through here — product
 // endpoints never touch stockQuantity — so the ledger and the level stay in
 // agreement. Negative moves are oversell-safe via an atomic guarded $inc.
-async function applyChange({ productId, change, type, reason, byUser }) {
+async function applyChange({ productId, change, type, reason, byUser, referenceSale = null }) {
   const product = await Product.findById(productId);
   if (!product) throw ApiError.notFound('Product not found');
   if (!product.isActive) throw ApiError.badRequest('Product is not available');
@@ -39,6 +39,7 @@ async function applyChange({ productId, change, type, reason, byUser }) {
     change,
     type,
     reason: reason?.trim() || undefined,
+    referenceSale,
     byUser,
   });
 

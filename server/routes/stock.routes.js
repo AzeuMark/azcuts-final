@@ -10,11 +10,15 @@ const V = require('../validators/stock.validator');
 
 const router = express.Router();
 
-// All stock routes need an authenticated staff/admin account (+ mode gate).
-router.use(auth, systemMode, requireRole('staff', 'admin'));
+// NOTE: this router is mounted at '/' (see routes/index.js), so guards must
+// be per-route — a bare router.use(auth/role) here would intercept every API
+// path mounted after it (/appointments, /settings/public, /chatbot, ...).
+// All stock endpoints need an authenticated staff/admin account (+ mode gate).
+const gate = [auth, systemMode, requireRole('staff', 'admin')];
 
 router.get(
   '/inventory/levels',
+  ...gate,
   requireFeature('inventoryManagement.monitorStockLevels'),
   V.levelsRules,
   validate,
@@ -22,6 +26,7 @@ router.get(
 );
 router.get(
   '/inventory/movements',
+  ...gate,
   requireFeature('inventoryManagement.monitorStockLevels'),
   V.movementsRules,
   validate,
@@ -29,6 +34,7 @@ router.get(
 );
 router.patch(
   '/inventory/update',
+  ...gate,
   requireFeature('inventoryManagement.enabled'),
   V.updateStockRules,
   validate,

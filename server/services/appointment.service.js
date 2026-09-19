@@ -7,6 +7,7 @@ const pricingService = require('./pricing.service');
 const scheduling = require('./scheduling.service');
 const assignment = require('./assignment.service');
 const notify = require('./notify.service');
+const salesService = require('./sales.service');
 
 // Legal appointment status transitions (SERVER_PLAN 2.1).
 // 'accepted -> pending' is the staff-reject-to-pool path handled specially below.
@@ -266,6 +267,10 @@ async function advanceStatus(id, targetStatus, actor) {
         $set: { status: 'active' },
       });
     }
+    // S4 (school paper: Sales) — auto-create the service sale. Best-effort:
+    // salesService logs and continues on failure so `done` never breaks.
+    const populatedForSale = await appt.populate(['service', 'assignedStaff', 'customer']);
+    await salesService.autoCreateServiceSale(populatedForSale, actor);
   } else {
     throw ApiError.badRequest('This endpoint only advances to in_service or done');
   }
