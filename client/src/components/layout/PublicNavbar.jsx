@@ -134,6 +134,10 @@ export default function PublicNavbar({ onAuth }) {
                 {label}
               </a>
             ))}
+            {/* GUIDE-ONLY: remove with client/src/guide/ before real-world deploy */}
+            <Link to="/guide" className="text-sm font-medium text-muted transition-colors hover:text-brand">
+              Guide
+            </Link>
           </div>
 
           <div className="flex items-center gap-3">
@@ -196,6 +200,14 @@ export default function PublicNavbar({ onAuth }) {
                 {label}
               </a>
             ))}
+            {/* GUIDE-ONLY: remove with client/src/guide/ before real-world deploy */}
+            <Link
+              to="/guide"
+              onClick={() => setOpen(false)}
+              className="block rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-brand"
+            >
+              Guide
+            </Link>
             {isAuthenticated ? (
               <>
                 <Link

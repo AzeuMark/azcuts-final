@@ -51,3 +51,20 @@ It's a single-page app, so the host must **fall back to `index.html`** for unkno
 2. Register/login works and lands on the right portal (silent refresh keeps you signed in on reload).
 3. A booking completes and the receipt downloads as PNG.
 4. Dashboards update live (open two tabs: book as a customer, watch the staff/admin dashboard react).
+
+## 7. Remove the classmate guide before any real-world deploy (safety)
+
+`client/src/guide/` (routes `/guide/*`) is defense-only: it publishes working
+demo logins and the system blueprint (HIPO/IPO, ERD), and pulls `mermaid`
+into the bundle. Delete it for any public/production deploy:
+
+```bash
+rm -rf client/src/guide
+# delete the GUIDE-ONLY lines in client/src/App.jsx (lazy imports + /guide routes)
+# delete the GUIDE-ONLY "Guide" links in client/src/components/layout/PublicNavbar.jsx
+pnpm --dir client install --prefer-offline
+npm run build --prefix client
+```
+
+Then rotate every seed credential (`server/seed/*.json`, `server/seeder.js`).
+Full rationale: `client/src/guide/README.md`.

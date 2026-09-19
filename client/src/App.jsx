@@ -33,6 +33,14 @@ const AdminSales = lazy(() => import('./pages/admin/Sales'));
 const AdminBookingHistory = lazy(() => import('./pages/admin/AppointmentHistory'));
 const AdminSystemSettings = lazy(() => import('./pages/admin/SystemSettings'));
 
+// GUIDE-ONLY (delete with client/src/guide/ before real-world deploy).
+const GuideHome = lazy(() => import('./guide/pages/GuideHome'));
+const CustomerGuide = lazy(() => import('./guide/pages/CustomerGuide'));
+const BarberGuide = lazy(() => import('./guide/pages/BarberGuide'));
+const OwnerGuide = lazy(() => import('./guide/pages/OwnerGuide'));
+const HipoIpo = lazy(() => import('./guide/pages/HipoIpo'));
+const DatabaseChart = lazy(() => import('./guide/pages/DatabaseChart'));
+
 function PageFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-app">
@@ -60,6 +68,14 @@ export default function App() {
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/register" element={<Navigate to="/" replace />} />
           <Route path="/maintenance" element={<Maintenance />} />
+
+          {/* GUIDE-ONLY classmate tour (public; delete before real-world deploy) */}
+          <Route path="/guide" element={<GuideHome />} />
+          <Route path="/guide/customer" element={<CustomerGuide />} />
+          <Route path="/guide/barber" element={<BarberGuide />} />
+          <Route path="/guide/owner" element={<OwnerGuide />} />
+          <Route path="/guide/hipo-ipo" element={<HipoIpo />} />
+          <Route path="/guide/database" element={<DatabaseChart />} />
 
           {/* Customer portal */}
           <Route
