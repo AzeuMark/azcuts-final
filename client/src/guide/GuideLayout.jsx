@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Scissors, Briefcase, Crown, Network, Database } from 'lucide-react';
+import ThemeToggle from '../components/ui/ThemeToggle';
 import cn from '../utils/cn';
 
 const TABS = [
@@ -22,6 +23,7 @@ export default function GuideLayout({ title, description, children }) {
             <ArrowLeft className="h-4 w-4" />
             Site
           </Link>
+          <ThemeToggle />
           <nav className="flex flex-wrap items-center gap-1">
             {TABS.map((t) => {
               const active = t.exact ? pathname === t.to : pathname === t.to;

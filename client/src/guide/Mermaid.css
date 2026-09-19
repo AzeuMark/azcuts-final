@@ -1,0 +1,22 @@
+/* Mermaid label readability fixes (mermaid forces `.label` white in both modes).
+ * Edge pills (.edgeLabel) are brand-blue, so their text stays white always.
+ * All other labels follow the app theme. Scoped under .mmd-light/.mmd-dark
+ * so diagrams elsewhere are unaffected. */
+
+.mmd-light .label {
+  color: #111827 !important;
+}
+
+.mmd-light .edgeLabel,
+.mmd-light .edgeLabel .label {
+  color: #ffffff !important;
+}
+
+.mmd-dark .label {
+  color: #f3f4f6 !important;
+}
+
+.mmd-dark .edgeLabel,
+.mmd-dark .edgeLabel .label {
+  color: #ffffff !important;
+}
