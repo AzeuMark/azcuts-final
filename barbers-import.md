@@ -70,3 +70,29 @@ Hair Rebond) from seeds + dev DB. Extras and products untouched.
   in the repo (and none is needed for this result).
 - **No application code changed.** Roster, gallery, booking, and login all
   read live data, so new seeds + photos flow through automatically.
+
+## Added services (2026-09-19)
+
+Two more services from the shop menu, appended to
+`server/seed/services.seed.json` and seeded (upsert-by-name, idempotent):
+
+| Name | Category | Price | Duration | Photo |
+|---|---|---|---|---|
+| Skin Fade | haircut | ?120 | 30 min | none yet — branded gradient fallback |
+| Hair Color | salon | ?500 | 60 min | none yet — branded gradient fallback |
+
+Catalog is now 6 services (4 with photos, 2 fallback). Upload real photos
+later via Admin ? Inventory ? Services (image upload rewrites the fallback
+automatically).
+
+### AI image generation: skipped (quota)
+
+Tried `gemini-3.1-flash-lite-image` twice (60s apart) — both rejected with
+`429 ... Quota exceeded ... limit: 0 ... free_tier_requests` for the supplied
+key, i.e. the key has no usable quota, so no image could be generated. Per
+instructions the todo was left in place instead of forcing it. The key was
+used in-session only and stored nowhere in the repo. To retry later: set the
+key as an env var and call
+`POST https://generativelanguage.googleapis.com/v1beta/models/<model>:generateContent`,
+then save the returned base64 `inlineData` into
+`client/src/pages/public/images/services/` and attach via the admin UI.

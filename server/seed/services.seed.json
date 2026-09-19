@@ -30,5 +30,21 @@
     "price": 130,
     "durationMinutes": 45,
     "isActive": true
+  },
+  {
+    "name": "Skin Fade",
+    "category": "haircut",
+    "description": "Sharp skin fade with blended precision — clean sides melting into textured length on top.",
+    "price": 120,
+    "durationMinutes": 30,
+    "isActive": true
+  },
+  {
+    "name": "Hair Color",
+    "category": "salon",
+    "description": "Full-head permanent color with shade consultation and finishing style.",
+    "price": 500,
+    "durationMinutes": 60,
+    "isActive": true
   }
 ]
