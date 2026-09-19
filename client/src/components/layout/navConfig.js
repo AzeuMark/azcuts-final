@@ -9,6 +9,7 @@ import {
   Boxes,
   CalendarClock,
   Wallet,
+  Receipt,
 } from 'lucide-react';
 
 // Role-aware side-panel links (CLIENT_PLAN §2.1).
@@ -30,6 +31,7 @@ export const NAV_BY_ROLE = {
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { to: '/admin/users', label: 'Users', icon: Users },
     { to: '/admin/inventory', label: 'Inventory', icon: Boxes },
+    { to: '/admin/sales', label: 'Sales', icon: Receipt },
     { to: '/admin/history', label: 'Booking History', icon: CalendarClock },
     { to: '/admin/settings', label: 'Settings', icon: Settings },
   ],

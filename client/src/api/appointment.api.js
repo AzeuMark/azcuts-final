@@ -18,6 +18,8 @@ export const appointmentApi = {
   rate: (id, { stars, comment }) =>
     unwrap(api.post(`/appointments/${id}/rate`, { stars, comment })),
   setStatus: (id, status) => unwrap(api.patch(`/appointments/${id}/status`, { status })),
+  // Admin manual assign (school paper: "Assign available barber/stylist").
+  assign: (id, staffId) => unwrap(api.patch(`/appointments/${id}/assign`, { staffId })),
 };
 
 export default appointmentApi;

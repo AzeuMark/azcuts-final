@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Percent, Search } from 'lucide-react';
+import { Percent, Search, UserPlus } from 'lucide-react';
 
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
@@ -11,6 +11,8 @@ import Select from '../../components/ui/Select';
 import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import adminApi from '../../api/admin.api';
+import appointmentApi from '../../api/appointment.api';
+import { useBookableStaff } from '../../hooks/useBookableStaff';
 import { getApiErrorMessage } from '../../config/axios';
 import { formatMoney } from '../../utils/formatMoney';
 import { formatDateTime } from '../../utils/datetime';
@@ -44,6 +46,7 @@ export default function AppointmentHistory() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [discountTarget, setDiscountTarget] = useState(null);
+  const [assignTarget, setAssignTarget] = useState(null);
 
   // Debounce the search box so we don't fire a request on every keystroke.
   useEffect(() => {
@@ -112,13 +115,22 @@ export default function AppointmentHistory() {
       key: 'actions',
       header: '',
       align: 'right',
-      render: (a) =>
-        DISCOUNTABLE.includes(a.status) ? (
-          <Button variant="ghost" size="sm" onClick={() => setDiscountTarget(a)} title="Set discount">
-            <Percent className="h-4 w-4" />
-            <span className="hidden sm:inline">Discount</span>
-          </Button>
-        ) : null,
+      render: (a) => (
+        <div className="flex items-center justify-end gap-1">
+          {a.status === 'pending' && !a.assignedStaff && (
+            <Button variant="ghost" size="sm" onClick={() => setAssignTarget(a)} title="Assign barber">
+              <UserPlus className="h-4 w-4" />
+              <span className="hidden sm:inline">Assign</span>
+            </Button>
+          )}
+          {DISCOUNTABLE.includes(a.status) ? (
+            <Button variant="ghost" size="sm" onClick={() => setDiscountTarget(a)} title="Set discount">
+              <Percent className="h-4 w-4" />
+              <span className="hidden sm:inline">Discount</span>
+            </Button>
+          ) : null}
+        </div>
+      ),
     },
   ];
 
@@ -215,6 +227,17 @@ export default function AppointmentHistory() {
           }}
         />
       )}
+
+      {assignTarget && (
+        <AssignModal
+          appointment={assignTarget}
+          onClose={() => setAssignTarget(null)}
+          onSaved={() => {
+            setAssignTarget(null);
+            qc.invalidateQueries({ queryKey: ['admin', 'history'] });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -263,6 +286,55 @@ function DiscountModal({ appointment, onClose, onSaved }) {
         error={invalid ? 'Enter a value between 0 and 100' : undefined}
         hint="The server recomputes the total from the price snapshot."
       />
+    </Modal>
+  );
+}
+
+// Manual barber assignment (paper: owner "Assign available barber/stylist").
+// Lists on-shift staff; the server re-checks availability for the slot.
+function AssignModal({ appointment, onClose, onSaved }) {
+  const [staffId, setStaffId] = useState('');
+  const staffQ = useBookableStaff();
+
+  const mutation = useMutation({
+    mutationFn: () => appointmentApi.assign(appointment._id, staffId),
+    onSuccess: () => {
+      toast.success('Barber assigned');
+      onSaved();
+    },
+    onError: (e) => toast.error(getApiErrorMessage(e, 'Could not assign barber')),
+  });
+
+  const staff = staffQ.data || [];
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Assign barber"
+      description={`${appointment.service?.name || 'Appointment'} · ${appointment.receiptNo} · ${formatDateTime(appointment.scheduledStart)}`}
+      size="sm"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={mutation.isPending}>
+            Cancel
+          </Button>
+          <Button onClick={() => mutation.mutate()} loading={mutation.isPending} disabled={!staffId}>
+            Assign barber
+          </Button>
+        </>
+      }
+    >
+      <Select label="Available barber" value={staffId} onChange={(e) => setStaffId(e.target.value)}>
+        <option value="">Select…</option>
+        {staff.map((s) => (
+          <option key={s._id} value={s._id}>
+            {s.fullName}
+            {s.nickname ? ` (${s.nickname})` : ''}
+          </option>
+        ))}
+      </Select>
+      {staffQ.isLoading && <p className="mt-2 text-sm text-muted">Loading barbers…</p>}
     </Modal>
   );
 }

@@ -28,6 +28,7 @@ const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
 const AdminAnalytics = lazy(() => import('./pages/admin/Analytics'));
 const AdminUserManager = lazy(() => import('./pages/admin/UserManager'));
 const AdminInventory = lazy(() => import('./pages/admin/Inventory'));
+const AdminSales = lazy(() => import('./pages/admin/Sales'));
 const AdminBookingHistory = lazy(() => import('./pages/admin/AppointmentHistory'));
 const AdminSystemSettings = lazy(() => import('./pages/admin/SystemSettings'));
 
@@ -100,6 +101,7 @@ export default function App() {
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="users" element={<AdminUserManager />} />
             <Route path="inventory" element={<AdminInventory />} />
+            <Route path="sales" element={<AdminSales />} />
             <Route path="history" element={<AdminBookingHistory />} />
             {/* Legacy split-history routes now fold into the unified page. */}
             <Route path="history/staff" element={<Navigate to="/admin/history" replace />} />

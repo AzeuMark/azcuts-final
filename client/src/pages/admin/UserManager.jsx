@@ -241,6 +241,7 @@ function UserFormModal({ user, nicknames, onClose, onSaved }) {
       role: user?.role || 'user',
       nickname: user?.nickname || '',
       status: user?.status || 'active',
+      canUpdateStock: user?.canUpdateStock || false,
       password: '',
     },
   });
@@ -261,6 +262,8 @@ function UserFormModal({ user, nicknames, onClose, onSaved }) {
       if (values.password) payload.password = values.password;
       if (isEdit) {
         payload.status = values.status;
+        // S8: per-barber stock permission (staff only; the server rejects it otherwise).
+        if (values.role === 'staff') payload.canUpdateStock = Boolean(values.canUpdateStock);
         return adminApi.updateUser(user._id, payload);
       }
       return adminApi.createUser(payload);
@@ -336,9 +339,15 @@ function UserFormModal({ user, nicknames, onClose, onSaved }) {
         {isEdit && (
           <Select label="Status" {...register('status')}>
             <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="inactive">Inactive (deactivated)</option>
             <option value="in_service">In service</option>
           </Select>
+        )}
+        {isEdit && role === 'staff' && (
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" className="h-4 w-4 rounded border-line text-brand focus:ring-brand" {...register('canUpdateStock')} />
+            Can update stock (inventory access)
+          </label>
         )}
         <Input
           label={isEdit ? 'Reset password' : 'Password'}

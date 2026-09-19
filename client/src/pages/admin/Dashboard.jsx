@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Users, Scissors, CalendarDays, UserCheck, Wallet, CheckCircle2 } from 'lucide-react';
+import { Users, Scissors, CalendarDays, UserCheck, Wallet, CheckCircle2, Package, AlertTriangle } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import StatCard from '../../components/StatCard';
 import DataTable from '../../components/DataTable';
@@ -50,6 +50,15 @@ export default function Dashboard() {
           loading={isLoading}
         />
         <StatCard label="Completed today" value={d.completedToday ?? 0} icon={CheckCircle2} tone="warning" loading={isLoading} />
+        <StatCard
+          label="Shop sales today"
+          value={formatMoneyCompact(d.shopSalesToday ?? 0)}
+          icon={Wallet}
+          tone="success"
+          loading={isLoading}
+        />
+        <StatCard label="Products" value={d.productCount ?? 0} icon={Package} tone="brand" loading={isLoading} />
+        <StatCard label="Low stock" value={d.lowStockCount ?? 0} icon={AlertTriangle} tone="warning" loading={isLoading} />
       </div>
 
       <div className="mt-8">
