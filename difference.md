@@ -128,3 +128,33 @@ If your panel checks strictly against the paper, G1â€“G6 are the items to either
 1. Your paper describes a **POS-with-products** shop (Services + Products + Stock + Sales table). Your build is a **service-booking** shop (Services + Extras, no stock, sales derived). Decide which story you defend.
 2. Cheapest way to close the gap: add a minimal `Product` model (name/price/stock/isActive) + admin CRUD + `stock` decrement on sale + inventory report â€” reuses your existing inventory/analytics patterns.
 3. Everything in Â§3 above is defensible bonus scope (real-time, ratings, receipts, AI assistant, modes, themes) â€” credit it explicitly, since none of it appears in `school-requirements.txt`.
+
+---
+
+## 6. CLOSED — School-compliance build S0–S10 (2026-09-19)
+
+All gaps G1–G9 from §2 are now implemented; all extras from §3 are DISABLED
+behind root `configuration.json` (`schoolComplianceMode: true`) instead of
+deleted, so one flag flip restores the full system.
+
+| Gap | Fix (phase) | Verified |
+|---|---|---|
+| G1/G2 barber record + view sales | `Sale` model, `POST /sales`, `GET /sales/mine`, staff Sales page + dashboard entry (S1/S4/S7) | live: record service+product, mine, stock link |
+| G3/G5 stock add/update/monitor | `Inventory` ledger + `PATCH /inventory/update` (atomic, oversell-safe), `canUpdateStock` per-barber grant, staff + admin Inventory pages (S1/S3/S7/S8) | 24/24 checks (S3) |
+| G4 products CRUD | `Product` model + `/products` endpoints + image stream + admin Products tab (S1/S2/S8) | 11/11 checks (S2) |
+| G6 inventory reports | `report?kind=inventory` (levels/movements, JSON+CSV) + Analytics tab (S6/S8) | live (S6) |
+| G7 ERD collections | `sales`, `products`, `inventory` collections live; ERD now `Users, Services, Appointments, Sales, Products, Inventory` (+ infra `settings, refreshtokens, counters`; `extras` retained but gated) | seed + counts |
+| G8 deactivate | status toggle primary in UserManager; hard delete hidden (`deleteUsers: false`) (S9) | UI gate |
+| G9 manual assign | `PATCH /appointments/:id/assign` (admin, on-shift + free checks) + Assign modal (S5/S8) | 16/16 checks (S5) |
+
+Disabled in school mode (code retained): extras, auto-assign/pool/re-route,
+one-booking limit, discounts, tax UI, receipt PNG, ratings, system modes,
+nicknames, sockets, charts, landing demo stats/testimonials, chatbot,
+server theme sync, username-login, hard delete (full list: `configuration.json`).
+
+**S10 paper walkthrough (2026-09-19, live dev server): 40/40 checks green** —
+every Customer, Barber, and Owner bullet in `school-requirements.txt`
+exercised end-to-end (register?book?assign?confirm?start?record sales?
+update stock?done?dashboard?users?services?products?inventory?reports?logout).
+Test data removed afterward; DB baseline: admin + 2 staff, 5 services,
+5 products (82 units), 0 appointments, 0 sales.

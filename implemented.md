@@ -938,3 +938,74 @@ Recording these so they are not mistaken for oversights in the audit:
 ### Audit scope
 
 Read in full: all of `/server` except `node_modules` (entry points, `ai/`, `config/`, `models/`, `middleware/`, `validators/`, `controllers/`, `services/`, `routes/`, `socket/`, `utils/`, `seed/`, `seeder.js`, `ecosystem.config.js`, `DEPLOYMENT.md`, `.env.example`, `package.json`) and all of `/client` except `node_modules` and `dist` (root configs, `index.html`, `public/`, and all files under `src/`), diffed against `SERVER_PLAN.md` and `CLIENT_PLAN.md`. **Documentation-only pass â€” no application code was modified.**
+
+---
+
+# SCHOOL COMPLIANCE BUILD S0–S10 (2026-09-19)
+
+Per `school-update-plan.md`: `school-requirements.txt` is the scope truth.
+All non-paper features DISABLED behind root `configuration.json`
+(`schoolComplianceMode: true`, DISABLE-only per owner decision); missing
+paper modules (Products, Inventory, Sales) built new. Commits `defd7ba`?S10.
+
+- **S0 — Flag foundation** (`defd7ba`): root `configuration.json`;
+  `server/config/features.js` (loader + school denylist + legacy fallback) +
+  `middleware/requireFeature.js`; flags exposed via `GET /settings/public`;
+  systemMode/login pass-through (always online); chatbot 503;
+  client `config/features.js` + `hooks/useFeatures.js` + `FeatureGate.jsx`.
+  Verified live: health 200, public forces online+school, chatbot 503.
+- **S1 — Models + seeds** (`c4bfda0`): `Product` (+Mongo image pattern),
+  `Inventory` (ledger: stock_in/sale/usage/adjustment), `Sale`
+  (snapshotted items, `SL-YYYYMMDD-####` via `utils/saleNo.js`);
+  `Appointment.saleId/assignedBy`, `User.canUpdateStock` (default false).
+  `products.seed.json` (5 products) + opening `stock_in` ledger entries.
+  Verified: seed ? 5 products, 82 units, 5 ledger rows.
+- **S2 — Products backend** (`2d59313`): validator/controller/routes
+  (`GET /products` public active-only, admin CRUD, `/products/:id/image`
+  stream); `stockQuantity` NOT writable (ledger-only, S3). 11/11 live checks.
+- **S3 — Inventory backend** (`ee56636`): `services/inventory.service.js`
+  `applyChange` (atomic guarded `$inc`, oversell-safe) + validator/controller/
+  routes (`GET levels/movements`, `PATCH update`); staff needs
+  `canUpdateStock` grant (via `PUT /admin/users/:id`, staff-only);
+  `updateUser` validator extended. 24/24 live checks.
+- **S4 — Sales backend** (`a87347e`): validator/`services/sales.service.js`
+  (`recordSale` live pricing + atomic decrement + orphan rollback;
+  `autoCreateServiceSale` idempotent on `done`, never breaks the transition)
+  + controller/routes (`POST /sales`, `GET /sales/mine`, `GET /sales`);
+  `Inventory.applyChange` gained `referenceSale`. 17/17 live checks.
+  Fixed real bug: `stock.routes` bare `router.use` guard intercepted later
+  routers (customers 403 on booking) ? per-route guards.
+- **S5 — Appointments to paper** (`eac6ef3`): `assignAppointment` service +
+  `PATCH /appointments/:id/assign` (admin, pending-only, on-shift + free
+  checks, `assignedBy` audit); gates: extras 400, one-booking-limit off,
+  auto-assign off (unassigned?admin assigns), pool-claim 403, reject returns
+  to admin (no auto-cancel), cancel reason optional, rate/discount routes 403.
+  16/16 live checks.
+- **S6 — Reports + dashboard** (`dbd3cde`): `salesSummary` (from `sales`),
+  `inventoryReport` (levels/low/out/movements), `reportByKind`
+  (appointments/sales/inventory, JSON+CSV), `summary?source=sales`;
+  dashboard += `shopSalesToday/Count`, `lowStockCount`, `outOfStockCount`,
+  `productCount` (legacy counters intact). 10/10 live checks.
+- **S7 — Barber client** (`f7c2b13`): `sales/product/stock` APIs + hooks,
+  `SaleModal`, `StockUpdateModal`, staff `Sales` + `Inventory` pages
+  (grant-gated updates), dashboard Record-sale entry, nav + routes.
+  Build green + 5/5 endpoint checks.
+- **S8 — Owner client** (`deff505`): admin `Sales` page, Inventory
+  `Products` (CRUD) + `Stock` tabs, history `AssignModal`, UserManager
+  stock-access checkbox + deactivation labels, Analytics
+  Appointments/Sales/Inventory tabs with kind-aware export, dashboard
+  widgets. Build green + 8/8 live checks.
+- **S9 — Global gating** (`035db2a`): wizard skips extras step (4-step),
+  history hides ratings/PNG + optional cancel reason, ChatWidget/
+  RealtimeBridge/socket mount only when flagged, ThemeSync local-only,
+  maintenance redirect off, landing demo stats/testimonials off, staff
+  ratings off, admin extras tab/discount/charts/mode/nicknames/tax/delete
+  hidden, nicknames gated in UserManager/AccountSettings. Build green +
+  gate regression (online-forced, chatbot 503, discount 403).
+
+**S10 — Verification (this entry): 40/40 paper-bullet checks green** against
+the live dev server (customer 7, barber 11 incl. logout, owner 22 incl. all
+three report kinds in JSON+CSV). Baseline restored afterward: 0 sales,
+0 appointments, ledger 10, Pomade 20, 5 products. Decisions locked:
+DISABLE-only, per-barber stock flag, manual usage (no auto-decrement).
+Next: defense demo per `defense-script.md`.
