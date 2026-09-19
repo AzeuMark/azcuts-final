@@ -135,7 +135,12 @@ const updateUser = asyncHandler(async (req, res) => {
     }
   }
 
-  ['fullName', 'username', 'email', 'phone', 'address', 'nickname', 'role', 'status', 'isApproved', 'password'].forEach(
+  // S3: canUpdateStock is staff-only — granting it to customers/admins is rejected.
+  if (req.body.canUpdateStock !== undefined && user.role !== 'staff' && req.body.role !== 'staff') {
+    throw ApiError.badRequest('Only staff accounts can be granted stock access');
+  }
+
+  ['fullName', 'username', 'email', 'phone', 'address', 'nickname', 'role', 'status', 'isApproved', 'canUpdateStock', 'password'].forEach(
     (f) => {
       if (req.body[f] !== undefined) user[f] = req.body[f];
     }

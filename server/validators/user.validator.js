@@ -35,6 +35,7 @@ const adminUpdateUserRules = [
   body('role').optional().isIn(['user', 'staff', 'admin']),
   body('status').optional().isIn(['active', 'inactive', 'in_service']),
   body('isApproved').optional().isBoolean().toBoolean(),
+  body('canUpdateStock').optional().isBoolean().withMessage('canUpdateStock must be boolean').toBoolean(),
   body('phone').optional({ values: 'falsy' }).trim(),
   body('address').optional({ values: 'falsy' }).trim(),
   body('nickname').optional({ values: 'falsy' }).trim(),
