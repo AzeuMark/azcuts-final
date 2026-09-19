@@ -1,0 +1,95 @@
+Based on your current research paper, the *features and functions* of the system can be organized by user role as follows. The paper identifies the main system functions as appointment management, sales management, inventory management, report generation, user/customer record management, and service management. 
+
+### 1. Customer Features and Functions
+
+* *Register Account*
+* *Log In*
+* *View Available Services*
+* *Select Service*
+* *Select Preferred Date and Time*
+* *Book Appointment*
+* *View Appointment Information*
+* *View Appointment Status*
+* *View Appointment History*
+* *Log Out*
+
+These functions are specifically described under the Customer role in the system scope and HIPO.  
+
+### 2. Barber/Stylist Features and Functions
+
+* *Log In*
+* *View Assigned Appointments*
+* *View Assigned Schedules*
+* *Review Appointment Details*
+* *Confirm Appointment*
+* *Update Appointment Status*
+* *Record Sales Transactions*
+
+  * Services
+  * Products
+* *View Relevant Sales Records*
+* *Update Product Usage/Stock Information* when authorized
+* *Log Out*
+
+The barber/stylist receives appointments assigned by the owner or administrator and can manage the relevant appointment, sales, and inventory information. 
+
+### 3. Owner/Administrator Features and Functions
+
+* *Log In*
+* *Access Owner Dashboard*
+* *Manage User Accounts*
+
+  * Add users
+  * Update users
+  * Deactivate users
+  * Assign user roles
+* *Manage Services*
+
+  * Add/update service information
+  * Maintain service details, price, duration, and availability
+* *Manage Appointments*
+
+  * View appointments
+  * Review appointment details
+  * Monitor appointments
+  * Assign available barber/stylist
+* *Manage Sales Records*
+
+  * Review sales transactions
+  * Monitor sales
+* *Manage Products*
+
+  * Maintain product information
+* *Manage Inventory*
+
+  * Monitor stock levels
+  * Monitor product availability
+  * Update stock information
+* *Manage Customer Records*
+* *View Dashboard Information*
+* *Generate Reports*
+
+  * Appointment reports
+  * Sales reports
+  * Inventory reports
+* *Log Out*
+
+These functions correspond to the Owner/Administrator description and the DFD processes in your paper.  
+
+### 4. Main System Features
+
+| Feature/Module              | Main Functions                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------- |
+| *User Account Management* | Register, login, manage accounts, assign roles, deactivate accounts             |
+| *Appointment Management*  | Book, view, assign, confirm, update status, monitor, view history               |
+| *Service Management*      | Add, update, maintain, view services and service details                        |
+| *Sales Management*        | Record, view, review, and monitor service/product sales                         |
+| *Product Management*      | Add, update, and manage product information                                     |
+| *Inventory Management*    | Monitor stock, update stock, track product availability and usage               |
+| *Customer Management*     | Maintain and access customer records                                            |
+| *Dashboard*               | View organized operational information                                          |
+| *Report Generation*       | Generate appointment, sales, and inventory reports                              |
+| *Role-Based Access*       | Provide different functions according to user role                              |
+| *Centralized Database*    | Store users, services, appointments, sales, products, and inventory information |
+
+Your ERD confirms the six main stored collections: *Users, Services, Appointments, Sales, Products, and Inventory*. Generated reports are produced from existing records and are *not stored as a separate collection*.
