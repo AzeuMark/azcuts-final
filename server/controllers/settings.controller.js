@@ -4,6 +4,7 @@ const ApiError = require('../utils/ApiError');
 const Settings = require('../models/Settings');
 const Service = require('../models/Service');
 const User = require('../models/User');
+const features = require('../config/features');
 
 async function getSingleton() {
   let settings = await Settings.findById('system');
@@ -25,11 +26,13 @@ const getPublic = asyncHandler(async (req, res) => {
     shopInfo: settings.shopInfo,
     timezone: settings.timezone,
     currency: settings.currency,
-    systemMode: settings.systemMode, // lets the client show a maintenance/offline banner
+    systemMode: features.schoolMode() ? 'online' : settings.systemMode, // school mode forces online
     storeHours: settings.storeHours,
     nicknames: settings.nicknames, // staff Settings needs the allowed nickname options
     services,
     staff,
+    features: features.getFeatures(), // S0: single flag source for the client
+    schoolComplianceMode: features.schoolMode(),
   });
 });
 

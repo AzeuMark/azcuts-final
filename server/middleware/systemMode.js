@@ -1,5 +1,6 @@
 const Settings = require('../models/Settings');
 const ApiError = require('../utils/ApiError');
+const features = require('../config/features');
 
 // Roles permitted to use protected routes / log in, per system mode (2.5).
 const ALLOWED_BY_MODE = {
@@ -21,7 +22,10 @@ function messageFor(mode) {
 
 // Gate protected routes by the current system mode. Runs after `auth`
 // (so req.user is set); public/unauthenticated requests pass through.
+// S0: when schoolComplianceMode is on, systemMode feature is disabled so the
+// gate passes through as always-online (paper has no maintenance modes).
 async function systemMode(req, res, next) {
+  if (!features.isEnabled('systemMode.enabled')) return next();
   const settings = await Settings.findById('system').select('systemMode');
   const mode = settings?.systemMode || 'online';
   const role = req.user?.role;

@@ -1,0 +1,155 @@
+{
+  "schoolComplianceMode": true,
+  "version": "1.0.0",
+  "notes": "Master feature toggle for AzCuts school compliance. true = enabled and visible. false = disabled/hidden (code stays, gated by flag, can be re-enabled later). All school-requirements.txt features are true. All extras are false. Agreed decisions: DISABLE-only (never delete), per-barber stock flag, manual stock usage only.",
+  "features": {
+    "userAccountManagement": {
+      "register": true,
+      "login": true,
+      "logout": true,
+      "manageAccounts": true,
+      "assignRoles": true,
+      "deactivateUsers": true,
+      "deleteUsers": false,
+      "usernameLogin": false,
+      "avatarUpload": false,
+      "serverPersistedTheme": false
+    },
+    "appointmentManagement": {
+      "book": true,
+      "view": true,
+      "viewHistory": true,
+      "viewStatus": true,
+      "assignBarber": true,
+      "confirm": true,
+      "updateStatus": true,
+      "monitor": true,
+      "cancelWithReason": false,
+      "oneActiveBookingLimit": false,
+      "autoAssignLeastLoaded": false,
+      "pendingPool": false,
+      "rejectReRoute": false,
+      "manualAssignByAdmin": true
+    },
+    "serviceManagement": {
+      "enabled": true,
+      "viewServices": true,
+      "addService": true,
+      "updateService": true,
+      "serviceImages": true,
+      "serviceDuration": true,
+      "serviceAvailabilityToggle": true
+    },
+    "extras": {
+      "enabled": false,
+      "selectExtras": false,
+      "extrasAffectDuration": false,
+      "extrasAffectPricing": false
+    },
+    "salesManagement": {
+      "enabled": true,
+      "recordServiceSale": true,
+      "recordProductSale": true,
+      "viewSalesRecordsBarber": true,
+      "reviewSalesAdmin": true,
+      "monitorSalesAdmin": true,
+      "autoCreateSaleOnDone": true
+    },
+    "productManagement": {
+      "enabled": true,
+      "addProduct": true,
+      "updateProduct": true,
+      "productImages": true,
+      "productAvailabilityToggle": true
+    },
+    "inventoryManagement": {
+      "enabled": true,
+      "monitorStockLevels": true,
+      "monitorAvailability": true,
+      "updateStockAdmin": true,
+      "updateStockBarberWhenAuthorized": true,
+      "lowStockWarning": true
+    },
+    "customerManagement": {
+      "enabled": true,
+      "maintainCustomerRecords": true,
+      "viewCustomerHistory": true
+    },
+    "dashboard": {
+      "ownerDashboard": true,
+      "barberQueue": true,
+      "customerBookingHome": true,
+      "liveCounters": true
+    },
+    "reports": {
+      "appointmentReports": true,
+      "salesReports": true,
+      "inventoryReports": true,
+      "exportCsv": true,
+      "exportJson": true,
+      "charts": false
+    },
+    "pricing": {
+      "basePlusProducts": true,
+      "discountPercent": false,
+      "taxRate": false,
+      "priceSnapshot": true
+    },
+    "receipts": {
+      "viewReceipt": true,
+      "downloadPng": false,
+      "receiptNo": true
+    },
+    "ratings": {
+      "enabled": false,
+      "promptAfterDone": false,
+      "editRating": false,
+      "staffAvg": false
+    },
+    "scheduling": {
+      "storeHours": true,
+      "slotStep": true,
+      "staffAvailabilityCheck": true,
+      "sundayClosedDefault": true
+    },
+    "systemMode": {
+      "enabled": false,
+      "maintenancePage": false
+    },
+    "nicknames": {
+      "enabled": false
+    },
+    "realtime": {
+      "enabled": false,
+      "socketIo": false,
+      "toasts": true,
+      "notificationBell": false
+    },
+    "landingCms": {
+      "hero": true,
+      "servicesGallery": true,
+      "about": true,
+      "contact": true,
+      "location": true,
+      "storeHoursTable": true,
+      "statsBand": false,
+      "testimonials": false,
+      "meetBarbers": true
+    },
+    "theme": {
+      "lightDarkToggle": true,
+      "persistLocal": true,
+      "persistServer": false
+    },
+    "aiChatbot": {
+      "enabled": false
+    },
+    "media": {
+      "storeInMongoDb": true,
+      "streamingEndpoints": true,
+      "imagePickerAdvanced": false
+    },
+    "roleBasedAccess": true,
+    "centralizedDatabase": true
+  }
+}

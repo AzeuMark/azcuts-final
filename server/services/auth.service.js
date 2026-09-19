@@ -6,6 +6,7 @@ const RefreshToken = require('../models/RefreshToken');
 const Settings = require('../models/Settings');
 const ApiError = require('../utils/ApiError');
 const { isAllowed, messageFor } = require('../middleware/systemMode');
+const features = require('../config/features');
 
 // We store only a SHA-256 hash of each refresh token (never the raw token).
 function hashToken(token) {
@@ -87,10 +88,13 @@ async function login(identifier, password) {
 
   // System-mode gate (2.5): checked AFTER credentials so the right roles can
   // still log in during maintenance/offline.
-  const settings = await Settings.findById('system').select('systemMode');
-  const mode = settings?.systemMode || 'online';
-  if (!isAllowed(mode, user.role)) {
-    throw new ApiError(503, messageFor(mode));
+  // S0: skipped in school mode (paper has no maintenance modes — always online).
+  if (features.isEnabled('systemMode.enabled')) {
+    const settings = await Settings.findById('system').select('systemMode');
+    const mode = settings?.systemMode || 'online';
+    if (!isAllowed(mode, user.role)) {
+      throw new ApiError(503, messageFor(mode));
+    }
   }
 
   const tokens = await issueTokens(user);
