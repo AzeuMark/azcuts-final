@@ -19,6 +19,8 @@ const UserHistory = lazy(() => import('./pages/user/History'));
 const UserSettings = lazy(() => import('./pages/user/Settings'));
 
 const StaffDashboard = lazy(() => import('./pages/staff/Dashboard'));
+const StaffSales = lazy(() => import('./pages/staff/Sales'));
+const StaffInventory = lazy(() => import('./pages/staff/Inventory'));
 const StaffHistory = lazy(() => import('./pages/staff/History'));
 const StaffSettings = lazy(() => import('./pages/staff/Settings'));
 
@@ -78,6 +80,8 @@ export default function App() {
           >
             <Route index element={<Navigate to="/staff/dashboard" replace />} />
             <Route path="dashboard" element={<StaffDashboard />} />
+            <Route path="sales" element={<StaffSales />} />
+            <Route path="inventory" element={<StaffInventory />} />
             <Route path="history" element={<StaffHistory />} />
             <Route path="settings" element={<StaffSettings />} />
           </Route>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Inbox, ListChecks, Check, X, Play, Flag } from 'lucide-react';
+import { Inbox, ListChecks, Check, X, Play, Flag, ReceiptText } from 'lucide-react';
 
 import PageHeader from '../../components/PageHeader';
 import AppointmentCard from '../../components/AppointmentCard';
@@ -10,6 +10,7 @@ import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Textarea from '../../components/ui/Textarea';
+import SaleModal from '../../components/SaleModal';
 
 import { useStaffAppointments } from '../../hooks/useStaff';
 import staffApi from '../../api/staff.api';
@@ -23,6 +24,7 @@ export default function Dashboard() {
 
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [saleOpen, setSaleOpen] = useState(false);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['staff', 'appointments'] });
@@ -67,6 +69,12 @@ export default function Dashboard() {
         eyebrow="Today"
         title="Staff Dashboard"
         description="Accept incoming appointments and move your queue through the day."
+        actions={
+          <Button variant="outline" onClick={() => setSaleOpen(true)}>
+            <ReceiptText className="h-4 w-4" />
+            Record sale
+          </Button>
+        }
       />
 
       <div className="stagger grid gap-6 lg:grid-cols-2">
@@ -169,7 +177,7 @@ export default function Dashboard() {
         }}
         onConfirm={() => rejectMutation.mutate()}
         title="Reject this appointment?"
-        description="It'll be re-routed to the next available barber, or cancelled if none are free."
+        description="It'll return to the admin for manual re-assignment."
         confirmLabel="Reject"
         tone="danger"
         loading={rejectMutation.isPending}
@@ -183,6 +191,8 @@ export default function Dashboard() {
           onChange={(e) => setRejectReason(e.target.value)}
         />
       </ConfirmDialog>
+
+      <SaleModal open={saleOpen} onClose={() => setSaleOpen(false)} onSaved={() => setSaleOpen(false)} />
     </div>
   );
 }
