@@ -46,6 +46,9 @@ const userSchema = new mongoose.Schema(
     totalServed: { type: Number, default: 0 },
     avgRating: { type: Number, default: 0 },
     ratingCount: { type: Number, default: 0 },
+    // S1 (school compliance): per-barber stock permission. Admin grants it;
+    // PATCH /inventory/update rejects unauthorized barbers (S3). Default false.
+    canUpdateStock: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

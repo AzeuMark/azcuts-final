@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Classic Pomade",
+    "description": "Medium-hold pomade for classic cuts and side parts.",
+    "price": 250,
+    "stockQuantity": 0,
+    "openingStock": 20,
+    "lowStockThreshold": 5,
+    "isActive": true
+  },
+  {
+    "name": "Matte Hair Wax",
+    "description": "Matte-finish styling wax for textured cuts.",
+    "price": 300,
+    "stockQuantity": 0,
+    "openingStock": 15,
+    "lowStockThreshold": 5,
+    "isActive": true
+  },
+  {
+    "name": "Cooling Shampoo",
+    "description": "Refreshing shampoo for daily use.",
+    "price": 180,
+    "stockQuantity": 0,
+    "openingStock": 25,
+    "lowStockThreshold": 5,
+    "isActive": true
+  },
+  {
+    "name": "Hair Tonic",
+    "description": "Light tonic for scalp care and light styling.",
+    "price": 220,
+    "stockQuantity": 0,
+    "openingStock": 12,
+    "lowStockThreshold": 3,
+    "isActive": true
+  },
+  {
+    "name": "Beard Oil",
+    "description": "Softening beard oil with a clean scent.",
+    "price": 350,
+    "stockQuantity": 0,
+    "openingStock": 10,
+    "lowStockThreshold": 3,
+    "isActive": true
+  }
+]

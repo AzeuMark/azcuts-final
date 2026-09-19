@@ -10,6 +10,8 @@ const Settings = require('../models/Settings');
 const User = require('../models/User');
 const Service = require('../models/Service');
 const Extra = require('../models/Extra');
+const Product = require('../models/Product');
+const Inventory = require('../models/Inventory');
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(path.join(__dirname, file), 'utf-8'));
@@ -85,6 +87,38 @@ async function seedStaff() {
   logger.info(`Seeded staff: ${inserted} new, ${staff.length - inserted} already present`);
 }
 
+// Products + opening stock (S1, school compliance). Upsert by name; the
+// `openingStock` helper key in products.seed.json never reaches the DB — it
+// becomes one `stock_in` ledger entry (recorded by the admin) on first seed.
+async function seedProducts() {
+  const items = readJson('products.seed.json');
+  const admin = await User.findOne({ role: 'admin' });
+  let inserted = 0;
+  for (const item of items) {
+    const { openingStock = 0, ...fields } = item;
+    const result = await Product.updateOne(
+      { name: fields.name },
+      { $setOnInsert: fields },
+      { upsert: true }
+    );
+    if (result.upsertedCount) inserted += 1;
+    const product = await Product.findOne({ name: fields.name });
+    const moves = await Inventory.countDocuments({ product: product._id });
+    if (moves === 0 && openingStock > 0) {
+      await Inventory.create({
+        product: product._id,
+        change: openingStock,
+        type: 'stock_in',
+        reason: 'Opening stock (seed)',
+        byUser: admin?._id,
+      });
+      product.stockQuantity = openingStock;
+      await product.save();
+    }
+  }
+  logger.info(`Seeded products: ${inserted} new, ${items.length - inserted} already present`);
+}
+
 async function run() {
   await connectDB();
   await seedSettings();
@@ -92,6 +126,7 @@ async function run() {
   await seedStaff();
   await seedCollection(Service, 'services.seed.json', 'services');
   await seedCollection(Extra, 'extras.seed.json', 'extras');
+  await seedProducts();
   await mongoose.connection.close();
   logger.info('Seeding complete.');
   process.exit(0);

@@ -72,6 +72,10 @@ const appointmentSchema = new mongoose.Schema(
     },
     rating: { type: ratingSchema, default: null },
     autoAssigned: { type: Boolean, default: false },
+    // S1 (school compliance): link to the auto-created service sale + who
+    // manually assigned this booking (admin manual assign replaces auto-assign).
+    saleId: { type: ObjectId, ref: 'Sale', default: null },
+    assignedBy: { type: ObjectId, ref: 'User', default: null },
     acceptedAt: Date,
     startedAt: Date,
     finishedAt: Date,
