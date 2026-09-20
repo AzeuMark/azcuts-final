@@ -25,6 +25,7 @@ const adminCreateUserRules = [
   body('phone').optional({ values: 'falsy' }).trim(),
   body('address').optional({ values: 'falsy' }).trim(),
   body('nickname').optional({ values: 'falsy' }).trim(),
+  body('canUpdateStock').optional().isBoolean().withMessage('canUpdateStock must be boolean').toBoolean(),
 ];
 
 const adminUpdateUserRules = [

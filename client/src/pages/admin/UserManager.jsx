@@ -63,6 +63,7 @@ export default function UserManager() {
   });
   const users = data?.users || [];
   const pagination = data?.pagination || { page: 1, pages: 1, total: 0 };
+  const firstAdminId = data?.firstAdminId || null;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['admin', 'users'] });
 
@@ -209,6 +210,7 @@ export default function UserManager() {
         <UserFormModal
           user={editing === 'new' ? null : editing}
           nicknames={nicknames}
+          isFirstAdmin={editing !== 'new' && editing?._id === firstAdminId}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -231,8 +233,11 @@ export default function UserManager() {
   );
 }
 
-function UserFormModal({ user, nicknames, onClose, onSaved }) {
+function UserFormModal({ user, nicknames, isFirstAdmin = false, onClose, onSaved }) {
   const isEdit = Boolean(user);
+  // Nickname select hides in school mode (same gate as the parent table).
+  const { isEnabled } = useFeatures();
+  const nicknamesOn = isEnabled('nicknames.enabled');
   const {
     register,
     handleSubmit,
@@ -267,10 +272,10 @@ function UserFormModal({ user, nicknames, onClose, onSaved }) {
       };
       if (values.role === 'staff') payload.nickname = values.nickname || undefined;
       if (values.password) payload.password = values.password;
+      // Per-staff stock grant (creation + edit); the server rejects it for non-staff.
+      if (values.role === 'staff') payload.canUpdateStock = Boolean(values.canUpdateStock);
       if (isEdit) {
         payload.status = values.status;
-        // S8: per-barber stock permission (staff only; the server rejects it otherwise).
-        if (values.role === 'staff') payload.canUpdateStock = Boolean(values.canUpdateStock);
         return adminApi.updateUser(user._id, payload);
       }
       return adminApi.createUser(payload);
@@ -327,12 +332,17 @@ function UserFormModal({ user, nicknames, onClose, onSaved }) {
         />
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label="Phone" type="tel" {...register('phone')} />
-          <Select label="Role" {...register('role')}>
+          <Select label="Role" disabled={isFirstAdmin} {...register('role')}>
             <option value="user">Customer</option>
             <option value="staff">Staff</option>
             <option value="admin">Admin</option>
           </Select>
         </div>
+        {isFirstAdmin && (
+          <p className="rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted">
+            Locked — the original admin cannot be demoted. Create another admin first if you need one.
+          </p>
+        )}
         {role === 'staff' && nicknamesOn && (
           <Select label="Nickname" {...register('nickname')}>
             <option value="">Select a title…</option>
@@ -344,13 +354,18 @@ function UserFormModal({ user, nicknames, onClose, onSaved }) {
           </Select>
         )}
         {isEdit && (
-          <Select label="Status" {...register('status')}>
+          <Select label="Status" disabled={isFirstAdmin} {...register('status')}>
             <option value="active">Active</option>
             <option value="inactive">Inactive (deactivated)</option>
             <option value="in_service">In service</option>
           </Select>
         )}
-        {isEdit && role === 'staff' && (
+        {isEdit && isFirstAdmin && (
+          <p className="rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted">
+            Locked — the original admin cannot be deactivated, or nobody could manage the shop.
+          </p>
+        )}
+        {role === 'staff' && (
           <label className="flex items-center gap-2 text-sm text-ink">
             <input type="checkbox" className="h-4 w-4 rounded border-line text-brand focus:ring-brand" {...register('canUpdateStock')} />
             Can update stock (inventory access)

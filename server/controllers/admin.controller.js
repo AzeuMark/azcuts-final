@@ -85,14 +85,19 @@ const listUsers = asyncHandler(async (req, res) => {
 
   const sort = USER_SORTS[req.query.sort] || USER_SORTS.newest;
 
-  const [users, total] = await Promise.all([
+  const [users, total, firstAdmin] = await Promise.all([
     User.find(filter).sort(sort).skip(skip).limit(limit),
     User.countDocuments(filter),
+    // The original admin (oldest admin account) is protected: its role and
+    // status can never be changed (see updateUser). The id is exposed so the
+    // UI can gray out those fields with an explanation.
+    User.findOne({ role: 'admin' }).sort({ createdAt: 1 }).select('_id'),
   ]);
 
   return ok(res, {
     users,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    firstAdminId: firstAdmin ? String(firstAdmin._id) : null,
   });
 });
 
@@ -115,6 +120,11 @@ const createUser = asyncHandler(async (req, res) => {
     }
   }
 
+  // canUpdateStock is staff-only, including at creation time.
+  if (req.body.canUpdateStock && role !== 'staff') {
+    throw ApiError.badRequest('Only staff accounts can be granted stock access');
+  }
+
   const user = await User.create({
     fullName,
     username: usernameLc,
@@ -126,6 +136,7 @@ const createUser = asyncHandler(async (req, res) => {
     nickname,
     status: 'active',
     isApproved: true,
+    canUpdateStock: role === 'staff' ? Boolean(req.body.canUpdateStock) : false,
   });
 
   return created(res, { user: user.toPublic() }, `${role} account created`);
@@ -141,6 +152,18 @@ const updateUser = asyncHandler(async (req, res) => {
   // Guard against self-lockout.
   if (req.params.id === req.user.id && req.body.role && req.body.role !== 'admin') {
     throw ApiError.badRequest('You cannot change your own role');
+  }
+
+  // First-admin lock: the original admin account can never be deactivated or
+  // demoted (by anyone, including itself). Other fields stay editable.
+  const firstAdmin = await User.findOne({ role: 'admin' }).sort({ createdAt: 1 }).select('_id');
+  if (firstAdmin && String(firstAdmin._id) === req.params.id) {
+    if (req.body.status && req.body.status !== 'active') {
+      throw ApiError.forbidden('The original admin account cannot be deactivated');
+    }
+    if (req.body.role && req.body.role !== 'admin') {
+      throw ApiError.forbidden('The original admin account cannot be demoted');
+    }
   }
 
   if (req.body.role === 'staff' && req.body.nickname) {
