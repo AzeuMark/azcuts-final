@@ -29,7 +29,7 @@ export const CUSTOMER_FEATURES = [
   {
     bullet: 'Select Preferred Date and Time',
     where: '/app/book → step 2 (Schedule)',
-    steps: ['Pick a barber (or Auto = the owner assigns one later)', 'Pick a date → free time slots come from the server', 'Past hours and closed days are excluded automatically'],
+    steps: ['Pick a date → free time slots come from the server (only times with a free barber)', 'The owner assigns your barber after you book — customers never pick one', 'Past hours and closed days are excluded automatically'],
     endpoint: 'GET /api/appointments/slots',
   },
   {

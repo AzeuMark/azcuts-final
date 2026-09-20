@@ -1013,3 +1013,10 @@ Next: defense demo per `defense-script.md`.
 > Update 2026-09-19 (`barbers-import.md`): demo staff/services replaced with
 > the real shop data (3 barbers, 4 services + real photos). Phase logs above
 > remain the historical record; living docs (`defense-script.md`, guide) updated.
+
+> Update (booking: owner assigns only): customers can no longer pick a barber.
+> The wizard schedule step shows time slots only (unfree times disabled) and
+> every booking lands unassigned-pending; `POST /appointments` rejects any
+> customer `staffId` (400) and rejects slots with no free on-shift barber
+> (409). Assignment stays exclusively on `PATCH /appointments/:id/assign`
+> (admin). Guide customer tour updated to match.

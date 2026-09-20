@@ -17,7 +17,6 @@ import PageHeader from '../../components/PageHeader';
 import ServiceCard from '../../components/ServiceCard';
 import ExtraChip from '../../components/ExtraChip';
 import SlotPicker from '../../components/SlotPicker';
-import StaffPicker from '../../components/StaffPicker';
 import ReceiptCard from '../../components/ReceiptCard';
 import Button, { buttonVariants } from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
@@ -106,7 +105,6 @@ export default function BookWizard() {
 
   const servicesQuery = useServices();
   const extrasQuery = useExtras();
-  const staffQuery = useBookableStaff();
 
   // Enforce one active booking at a time (the server enforces this too). A booking
   // is "active" until it's done or cancelled.
@@ -126,7 +124,9 @@ export default function BookWizard() {
     serviceId: booking.service?._id,
     date: booking.date,
     extras: extrasOn ? booking.extras.map((e) => e._id) : [],
-    staffId: booking.staff === 'auto' ? null : booking.staff,
+    // School mode: customers never pick a barber — the owner assigns one.
+    // Slots stay bookable only while at least one barber is free.
+    staffId: null,
   });
 
   // Default the schedule step to today the first time it's shown.
@@ -147,7 +147,6 @@ export default function BookWizard() {
           serviceId: booking.service._id,
           extras: extrasOn ? booking.extras.map((e) => e._id) : [],
           scheduledStart: booking.slot.start,
-          staffId: booking.staff === 'auto' ? undefined : booking.staff,
           paymentMethod: 'cash',
         })
         .then((r) => r.data.appointment),
@@ -367,31 +366,22 @@ export default function BookWizard() {
             </div>
           )}
 
-          {/* Step 2 — Schedule */}
+          {/* Step 2 — Schedule (no barber choice: the owner assigns one) */}
           {booking.step === 2 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="mb-1 text-lg font-semibold text-ink">Choose your barber</h2>
-                <p className="mb-4 text-sm text-muted">Pick a specific barber or let us auto-match.</p>
-                <StaffPicker
-                  staff={staffQuery.data || []}
-                  loading={staffQuery.isLoading}
-                  value={booking.staff}
-                  onChange={booking.setStaff}
-                />
-              </div>
-              <div>
-                <h2 className="mb-3 text-lg font-semibold text-ink">Pick a time</h2>
-                <SlotPicker
-                  date={booking.date || today}
-                  minDate={today}
-                  onDateChange={booking.setDate}
-                  slotsQuery={slotsQuery}
-                  selectedStart={booking.slot?.start}
-                  onSelectSlot={booking.setSlot}
-                  mode={booking.staff === 'auto' ? 'auto' : 'specific'}
-                />
-              </div>
+            <div>
+              <h2 className="mb-1 text-lg font-semibold text-ink">Pick a time</h2>
+              <p className="mb-4 text-sm text-muted">
+                Only times with a free barber can be booked. The owner assigns your barber after booking.
+              </p>
+              <SlotPicker
+                date={booking.date || today}
+                minDate={today}
+                onDateChange={booking.setDate}
+                slotsQuery={slotsQuery}
+                selectedStart={booking.slot?.start}
+                onSelectSlot={booking.setSlot}
+                mode="specific"
+              />
             </div>
           )}
 
@@ -454,12 +444,7 @@ export default function BookWizard() {
                 )}
                 <Row
                   label="Barber"
-                  value={
-                    booking.staff === 'auto'
-                      ? 'Auto-match'
-                      : (staffQuery.data || []).find((s) => s._id === booking.staff)?.fullName ||
-                        'Selected barber'
-                  }
+                  value="Assigned by the owner after booking"
                 />
                 <Row
                   label="When"

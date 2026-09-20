@@ -88,7 +88,7 @@ export default function SlotPicker({
       {!closed && slots.length > 0 && (
         <p className="mt-3 text-xs text-muted">
           {mode === 'specific'
-            ? 'Dashed times mean the barber is busy.'
+            ? 'Grayed-out times have no barber free.'
             : 'Times shown are open for at least one barber; dashed times book as pending.'}
         </p>
       )}

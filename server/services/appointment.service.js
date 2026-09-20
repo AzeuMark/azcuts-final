@@ -103,11 +103,16 @@ async function createBooking({
   // Must fall inside the shop's open hours for that day.
   scheduling.assertWithinStoreHours(start, end, settings, tz);
 
-  // Staff assignment
+  // Staff assignment — S5-school: ONLY the owner assigns (manual assign
+  // endpoint). Customers never pick a barber: an explicit staffId is rejected
+  // and unassigned bookings require at least one free on-shift barber.
   let assignedStaff = null;
   let autoAssigned = false;
 
   if (staffId) {
+    if (!features.isEnabled('appointmentManagement.autoAssignLeastLoaded')) {
+      throw ApiError.badRequest('Barber selection is disabled — the owner will assign your barber after booking');
+    }
     const staff = await User.findOne({ _id: staffId, role: 'staff' });
     if (!staff) throw ApiError.notFound('Staff not found');
     if (staff.status === 'inactive') throw ApiError.badRequest('That staff member is off shift');
@@ -122,9 +127,14 @@ async function createBooking({
     autoAssigned = true;
     const picked = await assignment.pickLeastLoadedStaff({ start, end });
     assignedStaff = picked ? picked._id : null;
+  } else {
+    // School mode: booking stays unassigned for the owner, but the slot must
+    // have at least one free on-shift barber or it could never be served.
+    const anyFree = await assignment.pickLeastLoadedStaff({ start, end });
+    if (!anyFree) {
+      throw ApiError.conflict('No barber is free for this time — please choose another slot');
+    }
   }
-  // S5 school mode: no auto-assign — the booking stays unassigned (pending)
-  // until an admin assigns a barber via PATCH /appointments/:id/assign.
 
   // Price snapshot (discount 0 at booking; tax from settings).
   const priceSnapshot = pricingService.computePricing({
