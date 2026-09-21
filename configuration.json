@@ -145,7 +145,7 @@
       "enabled": false
     },
     "guide": {
-      "enabled": true
+      "enabled": false
     },
     "media": {
       "storeInMongoDb": true,

@@ -440,11 +440,11 @@ export default function BookWizard() {
                 <EmptyState title="No services available" description="Please check back later." />
               ) : (
                 <>
-                  <div className="relative overflow-hidden rounded-3xl bg-[#0B0D12] px-5 py-10 sm:px-6">
+                  <div className="relative overflow-hidden rounded-3xl bg-[rgb(245_243_236)] px-5 py-10 dark:bg-[#0B0D12] sm:px-6">
                     {/* Mobile-only edge fades: melt tilted end-fragments into the
                         background so the single-card view always reads clean. */}
-                    <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-[5] w-10 bg-gradient-to-r from-[#0B0D12] to-transparent sm:hidden" />
-                    <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-[5] w-10 bg-gradient-to-l from-[#0B0D12] to-transparent sm:hidden" />
+                    <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-[5] w-10 bg-gradient-to-r from-[rgb(245_243_236)] to-transparent dark:from-[#0B0D12] sm:hidden" />
+                    <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-[5] w-10 bg-gradient-to-l from-[rgb(245_243_236)] to-transparent dark:from-[#0B0D12] sm:hidden" />
                     <div
                       ref={stripRef}
                       onPointerDown={onStripPointerDown}
@@ -498,7 +498,7 @@ export default function BookWizard() {
                       type="button"
                       onClick={() => scrollStrip(-1)}
                       aria-label="Previous services"
-                      className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-full p-1 text-white/60 transition-colors hover:text-white focus-ring sm:left-3"
+                      className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-full p-1 text-muted transition-colors hover:text-ink focus-ring dark:text-white/60 dark:hover:text-white sm:left-3"
                     >
                       <ChevronLeft className="h-9 w-9 drop-shadow-lg" />
                     </button>
@@ -506,7 +506,7 @@ export default function BookWizard() {
                       type="button"
                       onClick={() => scrollStrip(1)}
                       aria-label="Next services"
-                      className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-full p-1 text-white/60 transition-colors hover:text-white focus-ring sm:right-3"
+                      className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-full p-1 text-muted transition-colors hover:text-ink focus-ring dark:text-white/60 dark:hover:text-white sm:right-3"
                     >
                       <ChevronRight className="h-9 w-9 drop-shadow-lg" />
                     </button>
