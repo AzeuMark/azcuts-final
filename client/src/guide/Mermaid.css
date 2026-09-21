@@ -1,7 +1,8 @@
 /* Mermaid label readability fixes (mermaid forces `.label` white in both modes).
- * Edge pills (.edgeLabel) are brand-blue, so their text stays white always.
- * All other labels follow the app theme. Scoped under .mmd-light/.mmd-dark
- * so diagrams elsewhere are unaffected. */
+ * Node labels follow the app theme (below). Edge pills (.edgeLabel) follow
+ * it too — background + text — covering both HTML labels
+ * (color/background-color) and SVG text (fill). Scoped under
+ * .mmd-light/.mmd-dark so diagrams elsewhere are unaffected. */
 
 .mmd-light .label {
   color: #111827 !important;
@@ -12,9 +13,18 @@
   color: #111827 !important;
 }
 
+.mmd-light .edgeLabel {
+  background-color: #e5e7eb !important;
+}
 .mmd-light .edgeLabel,
 .mmd-light .edgeLabel .label {
-  color: #ffffff !important;
+  color: #111827 !important;
+}
+.mmd-light .edgeLabel text {
+  fill: #111827 !important;
+}
+.mmd-light .edgeLabel .label rect {
+  fill: #e5e7eb !important;
 }
 
 .mmd-dark .label {
@@ -25,7 +35,16 @@
   color: #f3f4f6 !important;
 }
 
+.mmd-dark .edgeLabel {
+  background-color: #232733 !important;
+}
 .mmd-dark .edgeLabel,
 .mmd-dark .edgeLabel .label {
-  color: #ffffff !important;
+  color: #f3f4f6 !important;
+}
+.mmd-dark .edgeLabel text {
+  fill: #f3f4f6 !important;
+}
+.mmd-dark .edgeLabel .label rect {
+  fill: #232733 !important;
 }
