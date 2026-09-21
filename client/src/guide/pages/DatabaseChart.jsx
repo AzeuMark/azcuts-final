@@ -1,13 +1,15 @@
 import GuideLayout from '../GuideLayout';
+import Mermaid from '../Mermaid';
 import ErdCanvas from '../ErdCanvas';
 import { BackLinks } from '../FeatureCard';
+import { ERD_CHART } from '../diagrams';
 
 const NOTES = [
   ['sales', 'The paper ERD collection. One row per transaction (SL-…); service lines are auto-created when a booking finishes, product lines decrement stock.'],
   ['products + inventory', 'The paper Product + Inventory collections. products holds the live level; inventory is the append-only movement ledger (every change has an actor + reason).'],
   ['appointments.saleId', 'Traceability link: a finished booking points at the sale it generated.'],
   ['users.canUpdateStock', 'Per-barber grant for the paper rule "update stock when authorized".'],
-  ['settings (singleton)', 'Shop config: hours, timezone, tax, nicknames, shop info. One document (_id "system"). No FK links — it floats alone.'],
+  ['settings (singleton)', 'Shop config: hours, timezone, tax, nicknames, shop info. One document (_id "system").'],
   ['refreshtokens + counters', 'Infrastructure, not in the paper: hashed login sessions and the atomic SL-/AZ- number sequences.'],
   ['extras (not charted)', 'Kept in the database but disabled in school mode — no lines connect to it.'],
 ];
@@ -16,14 +18,18 @@ export default function DatabaseChart() {
   return (
     <GuideLayout
       title="Database chart — all collections"
-      description="MongoDB azeubarbersalondb. The six paper collections lead; infrastructure tables are labeled as such. Drag the tables around — every relationship line, label, and cardinality follows."
+      description="MongoDB azeubarbersalondb. The six paper collections lead; infrastructure tables are labeled as such. The original fixed chart comes first, then the movable playground with the same tables."
     >
+      <h2 className="mb-3 font-serif text-xl font-semibold">Original chart (fixed tables)</h2>
+      <Mermaid chart={ERD_CHART} caption="Entity-relationship diagram of the live database" />
+
+      <h2 className="mb-3 mt-10 font-serif text-xl font-semibold">Playground (movable tables)</h2>
       <figure className="overflow-x-auto rounded-2xl border border-line bg-surface p-4 shadow-card">
         <div className="min-w-[760px]">
           <ErdCanvas />
         </div>
         <figcaption className="mt-3 text-center text-xs text-muted">
-          Entity-relationship diagram of the live database — interactive, layout saved per browser
+          Same collections as the chart above — drag the tables, resize the playground, every line follows
         </figcaption>
       </figure>
 
