@@ -78,7 +78,7 @@ export default function SaleModal({ open, onClose, onSaved }) {
         reset();
       }}
       title="Record sale"
-      description="Services and products you sold. Stock drops automatically for products."
+      description="Add everything you sold. Product stock goes down by itself."
       footer={
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-muted">
@@ -119,12 +119,12 @@ export default function SaleModal({ open, onClose, onSaved }) {
       {lines.length > 0 ? (
         <ul className="mt-4 space-y-2">
           {lines.map((l, i) => (
-            <li key={`${l.refId}-${i}`} className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
-              <span>
+            <li key={`${l.refId}-${i}`} className="flex items-start justify-between gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
+              <span className="min-w-0 break-words" title={`${l.qty}x ${l.name}`}>
                 <span className="mr-2 rounded bg-surface px-1.5 py-0.5 text-xs text-muted">{l.kind}</span>
                 {l.qty}x {l.name}
               </span>
-              <span className="flex items-center gap-2">
+              <span className="flex shrink-0 items-center gap-2">
                 <strong>{formatMoney(l.price * l.qty)}</strong>
                 <button
                   type="button"

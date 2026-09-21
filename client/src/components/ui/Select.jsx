@@ -293,7 +293,10 @@ const Select = forwardRef(function Select(
             className
           )}
         >
-          <span className={cn('block truncate', !selected && 'text-muted')}>
+          <span
+            className={cn('block truncate', !selected && 'text-muted')}
+            title={selected ? selected.label : undefined}
+          >
             {selected ? selected.label : placeholder || 'Select…'}
           </span>
           <ChevronDown
@@ -343,7 +346,7 @@ const Select = forwardRef(function Select(
                       isSel ? 'bg-brand/10 font-medium text-brand' : 'text-ink'
                     )}
                   >
-                    <span className="truncate">{opt.label}</span>
+                    <span className="min-w-0 break-words">{opt.label}</span>
                     {isSel && <Check className="h-4 w-4 shrink-0" />}
                   </li>
                 );
