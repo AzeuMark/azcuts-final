@@ -1,6 +1,5 @@
 import GuideLayout from '../GuideLayout';
 import Mermaid from '../Mermaid';
-import MovableErd from '../MovableErd';
 import { BackLinks } from '../FeatureCard';
 import { ERD_CHART } from '../diagrams';
 
@@ -18,15 +17,9 @@ export default function DatabaseChart() {
   return (
     <GuideLayout
       title="Database chart — all collections"
-      description="MongoDB azeubarbersalondb. The six paper collections lead; infrastructure tables are labeled as such. The original fixed chart comes first, then the movable playground with the same tables."
+      description="MongoDB azeubarbersalondb. The six paper collections lead; infrastructure tables are labeled as such. Field lists show the keys that matter, not every field."
     >
-      <h2 className="mb-3 font-serif text-xl font-semibold">Original chart (fixed tables)</h2>
       <Mermaid chart={ERD_CHART} caption="Entity-relationship diagram of the live database" />
-
-      <h2 className="mb-3 mt-10 font-serif text-xl font-semibold">Movable (same original design)</h2>
-      <div className="min-w-0">
-        <MovableErd />
-      </div>
 
       <h2 className="mb-3 mt-10 font-serif text-xl font-semibold">Reading notes</h2>
       <div className="grid gap-4 lg:grid-cols-2">
@@ -41,7 +34,6 @@ export default function DatabaseChart() {
       <BackLinks
         links={[
           { to: '/guide/hipo-ipo', label: 'HIPO + IPO' },
-          { to: '/guide/system-design', label: 'System Design' },
           { to: '/guide', label: 'Guide start' },
         ]}
       />
