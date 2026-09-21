@@ -55,12 +55,12 @@ export default function Modal({
         ref={panelRef}
         tabIndex={-1}
         className={cn(
-          'relative w-full animate-scale-in rounded-t-2xl border border-line bg-surface shadow-pop outline-none sm:rounded-2xl',
+          'relative flex max-h-[90dvh] w-full animate-scale-in flex-col rounded-t-2xl border border-line bg-surface shadow-pop outline-none sm:rounded-2xl',
           sizes[size] || sizes.md
         )}
       >
         {(title || onClose) && (
-          <div className="flex items-start justify-between gap-4 border-b border-line p-5">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line p-5">
             <div className="space-y-1">
               {title && <h2 className="text-base font-semibold text-ink">{title}</h2>}
               {description && <p className="text-sm text-muted">{description}</p>}
@@ -77,9 +77,11 @@ export default function Modal({
             )}
           </div>
         )}
-        {children && <div className="p-5">{children}</div>}
+        {children && <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>}
         {footer && (
-          <div className="flex items-center justify-end gap-3 border-t border-line p-5">{footer}</div>
+          <div className="flex shrink-0 flex-col-reverse flex-wrap gap-3 border-t border-line p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end sm:pb-5 [&>*]:w-full sm:[&>*]:w-auto">
+            {footer}
+          </div>
         )}
       </div>
     </div>,

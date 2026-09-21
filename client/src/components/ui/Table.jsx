@@ -22,10 +22,10 @@ export function TR({ className, ...props }) {
 
 export function TH({ className, ...props }) {
   return (
-    <th
-      className={cn('px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted', className)}
-      {...props}
-    />
+      <th
+        className={cn('whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted', className)}
+        {...props}
+      />
   );
 }
 

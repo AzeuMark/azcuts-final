@@ -26,7 +26,7 @@ export default function Pagination({
 
   return (
     <div className={cn('flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between', className)}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 sm:justify-start">
         {showSizePicker && (
           <div className="flex items-center gap-2 text-sm text-muted">
             <span className="hidden sm:inline">Rows per page</span>
@@ -52,29 +52,31 @@ export default function Pagination({
         )}
       </div>
 
-      <div className="flex items-center gap-3">
-        <p className="text-sm text-muted">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <p className="text-center text-sm text-muted sm:text-left">
           Page <span className="font-medium text-ink">{page}</span> of {Math.max(totalPages, 1)}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           <Button
             variant="outline"
             size="sm"
+            className="min-h-[44px] sm:min-h-0"
             onClick={() => onPageChange?.(page - 1)}
             disabled={page <= 1}
             aria-label="Previous page"
           >
             <ChevronLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Prev</span>
+            <span>Prev</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
+            className="min-h-[44px] sm:min-h-0"
             onClick={() => onPageChange?.(page + 1)}
             disabled={page >= totalPages}
             aria-label="Next page"
           >
-            <span className="hidden sm:inline">Next</span>
+            <span>Next</span>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
