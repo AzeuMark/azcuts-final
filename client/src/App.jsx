@@ -70,14 +70,14 @@ export default function App() {
           <Route path="/register" element={<Navigate to="/" replace />} />
           <Route path="/maintenance" element={<Maintenance />} />
 
-          {/* GUIDE-ONLY classmate tour (public; delete before real-world deploy) */}
-          <Route path="/guide" element={<GuideHome />} />
-          <Route path="/guide/system-design" element={<SystemDesign />} />
-          <Route path="/guide/customer" element={<CustomerGuide />} />
-          <Route path="/guide/barber" element={<BarberGuide />} />
-          <Route path="/guide/owner" element={<OwnerGuide />} />
-          <Route path="/guide/hipo-ipo" element={<HipoIpo />} />
-          <Route path="/guide/database" element={<DatabaseChart />} />
+          {/* GUIDE-ONLY classmate tour (public; flag-gated, delete before real-world deploy) */}
+          <Route path="/guide" element={<FeatureGate feature="guide.enabled" fallback={<NotFound />}><GuideHome /></FeatureGate>} />
+          <Route path="/guide/system-design" element={<FeatureGate feature="guide.enabled" fallback={<NotFound />}><SystemDesign /></FeatureGate>} />
+          <Route path="/guide/customer" element={<FeatureGate feature="guide.enabled" fallback={<NotFound />}><CustomerGuide /></FeatureGate>} />
+          <Route path="/guide/barber" element={<FeatureGate feature="guide.enabled" fallback={<NotFound />}><BarberGuide /></FeatureGate>} />
+          <Route path="/guide/owner" element={<FeatureGate feature="guide.enabled" fallback={<NotFound />}><OwnerGuide /></FeatureGate>} />
+          <Route path="/guide/hipo-ipo" element={<FeatureGate feature="guide.enabled" fallback={<NotFound />}><HipoIpo /></FeatureGate>} />
+          <Route path="/guide/database" element={<FeatureGate feature="guide.enabled" fallback={<NotFound />}><DatabaseChart /></FeatureGate>} />
 
           {/* Customer portal */}
           <Route

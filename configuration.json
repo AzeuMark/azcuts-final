@@ -144,6 +144,9 @@
     "aiChatbot": {
       "enabled": false
     },
+    "guide": {
+      "enabled": true
+    },
     "media": {
       "storeInMongoDb": true,
       "streamingEndpoints": true,

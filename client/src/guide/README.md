@@ -13,7 +13,27 @@ tour of the paper-required features. It is NOT part of the product.
 3. **Dead weight + dependency.** The guide pulls `mermaid` (~1 MB) into the
    bundle and adds six public routes with zero business value.
 
-## Removal (30 seconds)
+## Temporary hide (defense, 10 seconds)
+
+No code delete needed. Flip the flag in root `configuration.json`:
+
+```json
+{ "features": { "guide": { "enabled": false } } }
+```
+
+Then restart the server (it caches the config in memory) and hard-reload
+the client (flags cache 5 min via React Query). Effect:
+
+- All 7 `/guide/*` routes render the 404 page (`FeatureGate` fallback).
+- Both Guide links in `PublicNavbar` (desktop + mobile) disappear.
+- Guide-to-guide links are unreachable since every entry route 404s.
+
+Restore with `"enabled": true` + same restart/reload. The flag is
+intentionally outside `schoolComplianceMode`'s denylist so it works in
+both paper and full modes. Unknown/missing flag defaults to enabled
+(non-breaking).
+
+## Removal (30 seconds, real deploy only)
 
 ```bash
 # from the repo root
