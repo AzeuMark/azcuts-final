@@ -359,6 +359,18 @@ export default function ErdCanvas() {
               )}
               <text x={12} y={22} fontSize="13" fontWeight="700" fill={text} fontFamily="ui-monospace, monospace">{t.title}</text>
               <text x={W - 12} y={22} textAnchor="end" fontSize="11" fill={sub}>⠿</text>
+              {classic &&
+                t.fields.slice(0, -1).map((_, j) => (
+                  <line
+                    key={j}
+                    x1={0}
+                    y1={HEAD_H + (j + 1) * ROW_H}
+                    x2={W}
+                    y2={HEAD_H + (j + 1) * ROW_H}
+                    stroke={stroke}
+                    strokeWidth="1"
+                  />
+                ))}
               {t.fields.map(([f, kind], j) => (
                 <text
                   key={j}
