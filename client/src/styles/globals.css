@@ -105,6 +105,80 @@
     animation-delay: 550ms;
   }
 
+  /* Cover-flow service picker (booking step 0). Scroll-driven 3D tilt via
+     view-timeline; browsers without support get a plain snap strip that
+     still works. Reduced-motion is handled by the global rule below. */
+  .cf-stage {
+    perspective: 900px;
+  }
+  .cf-strip {
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .cf-strip::-webkit-scrollbar {
+    display: none;
+  }
+  /* Every level between the perspective container and the rotating card
+     must preserve-3d, or the tilt renders flat (orthographic). */
+  .cf-track {
+    transform-style: preserve-3d;
+  }
+  .cf-slide {
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    transform-style: preserve-3d;
+    view-timeline-name: --cf-slide;
+    view-timeline-axis: inline;
+  }
+  .cf-card {
+    transform-style: preserve-3d;
+    will-change: transform, filter;
+    animation:
+      cf-tilt linear both,
+      cf-shade linear both;
+    animation-timeline: --cf-slide, --cf-slide;
+    animation-range: contain, contain;
+  }
+  @keyframes cf-tilt {
+    from {
+      transform: rotateY(-60deg) translateX(14%) scale(0.9);
+    }
+    50% {
+      transform: rotateY(0deg) translateX(0) scale(1.08);
+    }
+    to {
+      transform: rotateY(60deg) translateX(-14%) scale(0.9);
+    }
+  }
+  @keyframes cf-shade {
+    from,
+    to {
+      filter: grayscale(1) brightness(0.82);
+    }
+    50% {
+      filter: grayscale(0) brightness(1);
+    }
+  }
+  /* Mobile: the card nearly fills the viewport, so the full swing maps onto
+     a few px of travel and microscopic offsets lean visibly. Softer angles
+     keep the centered card flat while preserving the flip feel in motion. */
+  @keyframes cf-tilt-mobile {
+    from {
+      transform: rotateY(-22deg) translateX(8%) scale(0.95);
+    }
+    50% {
+      transform: rotateY(0deg) translateX(0) scale(1.06);
+    }
+    to {
+      transform: rotateY(22deg) translateX(-8%) scale(0.95);
+    }
+  }
+  @media (max-width: 639px) {
+    .cf-card {
+      animation-name: cf-tilt-mobile, cf-shade;
+    }
+  }
+
   /* Respect reduced-motion everywhere (DESIGN.md motion rule). */
   @media (prefers-reduced-motion: reduce) {
     *,

@@ -36,25 +36,26 @@ import appointmentApi from '../../api/appointment.api';
 import { getApiErrorMessage } from '../../config/axios';
 import { formatMoney } from '../../utils/formatMoney';
 import { formatDateTime, formatTime, isoDate } from '../../utils/datetime';
+import { serverAsset } from '../../utils/serverAsset';
 import { downloadReceiptPng } from '../../utils/receiptPng';
 import cn from '../../utils/cn';
 
 function Stepper({ step, labels }) {
   return (
-    <ol className="flex items-center gap-2">
+    <ol className="flex items-center gap-1 sm:gap-2">
       {labels.map((label, i) => {
         const done = i < step;
         const active = i === step;
         return (
-          <li key={label} className="flex flex-1 items-center gap-2">
+          <li key={label} className="flex flex-1 items-center gap-1 sm:gap-2">
             <div className="flex items-center gap-2">
               <span
                 className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors',
+                  'flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-all',
                   done
-                    ? 'bg-brand text-brand-fg'
+                    ? 'bg-gradient-to-br from-brand to-accent text-white shadow-card'
                     : active
-                      ? 'bg-brand/10 text-brand ring-2 ring-brand'
+                      ? 'scale-110 bg-brand/10 text-brand ring-2 ring-brand shadow-[0_0_18px_rgb(225_29_72/0.45)]'
                       : 'bg-surface-2 text-muted'
                 )}
               >
@@ -62,14 +63,22 @@ function Stepper({ step, labels }) {
               </span>
               <span
                 className={cn(
-                  'hidden text-sm font-medium sm:block',
-                  active ? 'text-ink' : 'text-muted'
+                  'hidden text-[13px] font-medium min-[480px]:block',
+                  active ? 'font-semibold text-ink' : done ? 'text-ink' : 'text-muted'
                 )}
               >
                 {label}
               </span>
             </div>
-            {i < labels.length - 1 && <span className="h-px flex-1 bg-line" />}
+            {i < labels.length - 1 && (
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'h-0.5 flex-1 rounded-full',
+                  i < step ? 'bg-gradient-to-r from-brand to-accent' : 'bg-line'
+                )}
+              />
+            )}
           </li>
         );
       })}
@@ -81,6 +90,41 @@ export default function BookWizard() {
   const booking = useBooking();
   const queryClient = useQueryClient();
   const receiptRef = useRef(null);
+  const stripRef = useRef(null);
+  const scrollStrip = (dir) =>
+    stripRef.current?.scrollBy({ left: dir * 280, behavior: 'smooth' });
+
+  // Mouse-drag scrolling for the cover-flow strip (touch uses native swipe).
+  // Pointer capture engages only after a real drag starts, so plain clicks
+  // on cards still dispatch normally.
+  const dragRef = useRef({ down: false, moved: false, captured: false, startX: 0, startLeft: 0 });
+  const onStripPointerDown = (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0 || !stripRef.current) return;
+    dragRef.current = { down: true, moved: false, captured: false, startX: e.clientX, startLeft: stripRef.current.scrollLeft };
+  };
+  const onStripPointerMove = (e) => {
+    const d = dragRef.current;
+    if (!d.down || !stripRef.current) return;
+    const dx = e.clientX - d.startX;
+    if (!d.captured && Math.abs(dx) > 8) {
+      d.captured = true;
+      d.moved = true;
+      // Mandatory snap would yank mid-drag positions back — suspend it while
+      // dragging; restoring it on release snaps to the nearest card.
+      stripRef.current.style.scrollSnapType = 'none';
+      try {
+        stripRef.current.setPointerCapture(e.pointerId);
+      } catch {
+        /* no-op — dragging still works without capture */
+      }
+    }
+    if (d.captured) stripRef.current.scrollLeft = d.startLeft - dx;
+  };
+  const onStripPointerUp = () => {
+    dragRef.current.down = false;
+    dragRef.current.captured = false;
+    if (stripRef.current) stripRef.current.style.scrollSnapType = '';
+  };
 
   const { data: settings } = useSettingsPublic();
   const currency = settings?.currency || 'PHP';
@@ -93,6 +137,8 @@ export default function BookWizard() {
   const pngOn = isEnabled('receipts.downloadPng');
   const visibleSteps = extrasOn ? STEPS : STEPS.filter((_, i) => i !== 1);
   const visibleIndex = extrasOn ? booking.step : booking.step === 0 ? 0 : booking.step - 1;
+  // Summary (rail + mobile bar) appears only on the final steps.
+  const showSummary = booking.step >= 3;
   // Internal step indices stay 0-4; navigation skips the hidden extras step.
   const goNext = () => {
     if (!extrasOn && booking.step === 0) booking.setStep(2);
@@ -117,6 +163,7 @@ export default function BookWizard() {
   const [receipt, setReceipt] = useState(null);
   const [bookedAppt, setBookedAppt] = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const [activeId, setActiveId] = useState(null);
 
   const today = isoDate();
 
@@ -139,6 +186,74 @@ export default function BookWizard() {
     () => (category === 'all' ? services : services.filter((s) => s.category === category)),
     [services, category]
   );
+
+  // Center-slide tracking for the cover-flow caption. Computed from geometry
+  // (closest slide center to the scroller center) instead of visibility
+  // ratios — overlap made IntersectionObserver report the wrong card.
+  useEffect(() => {
+    const root = stripRef.current;
+    if (!root) return undefined;
+    let raf = 0;
+    const pick = () => {
+      const viewport = root.getBoundingClientRect();
+      const mid = viewport.left + viewport.width / 2;
+      let best = null;
+      let bestD = Infinity;
+      const slides = root.querySelectorAll('[data-slide]');
+      if (slides.length === 0) {
+        setActiveId(null);
+        return;
+      }
+      slides.forEach((sl) => {
+        const r = sl.getBoundingClientRect();
+        const d = Math.abs(r.left + r.width / 2 - mid);
+        if (d < bestD) {
+          bestD = d;
+          best = sl;
+        }
+      });
+      if (best) {
+        const id = best.dataset.slide;
+        setActiveId((prev) => (prev === id ? prev : id));
+        // Keep the centered card painted above its angled neighbors.
+        slides.forEach((sl) => {
+          sl.style.zIndex = sl === best ? 10 : 1;
+        });
+      }
+    };
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(pick);
+    };
+    root.addEventListener('scroll', onScroll, { passive: true });
+    pick();
+    return () => {
+      root.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [filteredServices]);
+
+  useEffect(() => {
+    stripRef.current?.scrollTo({ left: 0 });
+  }, [category]);
+
+  const centerSlide = (id) => {
+    stripRef.current
+      ?.querySelector(`[data-slide="${id}"]`)
+      ?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  };
+
+  const activeService =
+    filteredServices.find((s) => s._id === activeId) ?? filteredServices[0] ?? null;
+
+  // The centered card IS the choice — selecting follows the center
+  // automatically so there is no separate choose step.
+  useEffect(() => {
+    if (activeService && booking.service?._id !== activeService._id) {
+      booking.setService(activeService);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, filteredServices]);
 
   const bookMutation = useMutation({
     mutationFn: () =>
@@ -288,24 +403,25 @@ export default function BookWizard() {
   // ------------------------------------------------------------------ WIZARD
   return (
     <div>
-      <PageHeader
-        title="Book a service"
-        description={
-          extrasOn ? 'Choose a service, add extras, pick a time, and confirm.' : 'Choose a service, pick a time, and confirm.'
-        }
-      />
+      <div className="mb-8 text-center">
+        <h1 className="font-serif text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+          Book a service
+        </h1>
+        <p className="mx-auto mt-2 max-w-xl text-sm text-muted sm:text-base">
+          {extrasOn ? 'Choose a service, add extras, pick a time, and confirm.' : 'Choose a service, pick a time, and confirm.'}
+        </p>
+      </div>
 
       <div className="mb-8">
         <Stepper step={visibleIndex} labels={visibleSteps} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className={cn('grid gap-6', showSummary && 'lg:grid-cols-[1fr_320px]')}>
         <div className="min-w-0">
           {/* Step 0 — Service */}
           {booking.step === 0 && (
             <div>
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold text-ink">Choose a service</h2>
+              <div className="mb-5 flex justify-center">
                 <Tabs
                   value={category}
                   onChange={setCategory}
@@ -323,18 +439,116 @@ export default function BookWizard() {
               ) : filteredServices.length === 0 ? (
                 <EmptyState title="No services available" description="Please check back later." />
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {filteredServices.map((service) => (
-                    <ServiceCard
-                      key={service._id}
-                      service={service}
-                      currency={currency}
-                      selectable
-                      selected={booking.service?._id === service._id}
-                      onSelect={booking.setService}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="relative overflow-hidden rounded-3xl bg-[#0B0D12] px-5 py-10 sm:px-6">
+                    {/* Mobile-only edge fades: melt tilted end-fragments into the
+                        background so the single-card view always reads clean. */}
+                    <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 z-[5] w-10 bg-gradient-to-r from-[#0B0D12] to-transparent sm:hidden" />
+                    <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-[5] w-10 bg-gradient-to-l from-[#0B0D12] to-transparent sm:hidden" />
+                    <div
+                      ref={stripRef}
+                      onPointerDown={onStripPointerDown}
+                      onPointerMove={onStripPointerMove}
+                      onPointerUp={onStripPointerUp}
+                      onPointerCancel={onStripPointerUp}
+                      className="cf-strip cf-stage cursor-grab overflow-x-auto active:cursor-grabbing"
+                    >
+                      <div className="cf-track flex w-max items-stretch -space-x-8 px-[calc(50%-36vw)] py-8 sm:px-[calc(50%-min(37.5vw,220px))]">
+                        {filteredServices.map((service) => {
+                          const img = serverAsset(service.image);
+                          return (
+                            <div
+                              key={service._id}
+                              data-slide={service._id}
+                              className="cf-slide relative w-[72vw] shrink-0 sm:w-[min(75vw,440px)]"
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  if (dragRef.current.moved) {
+                                    dragRef.current.moved = false;
+                                    return;
+                                  }
+                                  centerSlide(service._id);
+                                }}
+                                onDragStart={(e) => e.preventDefault()}
+                                aria-label={`View ${service.name}`}
+                                className="cf-card focus-ring block aspect-[3/4] w-full overflow-hidden rounded-[2rem] bg-white/5"
+                              >
+                                {img ? (
+                                  <img
+                                    src={img}
+                                    alt={service.name}
+                                    loading="lazy"
+                                    draggable="false"
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand/30 to-accent/10 font-serif text-7xl text-white/80">
+                                    {service.name.charAt(0)}
+                                  </span>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => scrollStrip(-1)}
+                      aria-label="Previous services"
+                      className="absolute left-1 top-1/2 z-10 -translate-y-1/2 rounded-full p-1 text-white/60 transition-colors hover:text-white focus-ring sm:left-3"
+                    >
+                      <ChevronLeft className="h-9 w-9 drop-shadow-lg" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollStrip(1)}
+                      aria-label="Next services"
+                      className="absolute right-1 top-1/2 z-10 -translate-y-1/2 rounded-full p-1 text-white/60 transition-colors hover:text-white focus-ring sm:right-3"
+                    >
+                      <ChevronRight className="h-9 w-9 drop-shadow-lg" />
+                    </button>
+                  </div>
+
+                  {activeService && (
+                    <div className="mx-auto mt-6 max-w-[440px] text-center">
+                      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand">
+                        {activeService.category === 'salon' ? 'Salon' : 'Haircut'}
+                      </p>
+                      <h3 className="mt-1 font-serif text-3xl font-semibold tracking-tight text-ink">
+                        {activeService.name}
+                      </h3>
+                      {activeService.description && (
+                        <p className="mx-auto mt-2 line-clamp-2 max-w-md text-sm text-muted">
+                          {activeService.description}
+                        </p>
+                      )}
+                      <p className="mt-2 text-sm text-muted tnum">
+                        <span className="font-semibold text-ink">
+                          {formatMoney(activeService.price, currency)}
+                        </span>
+                        {' · '}
+                        {activeService.durationMinutes} min
+                      </p>
+                      <div className="mt-4 flex items-center justify-center gap-2">
+                        {filteredServices.map((s) => (
+                          <button
+                            key={s._id}
+                            type="button"
+                            onClick={() => centerSlide(s._id)}
+                            aria-label={`Go to ${s.name}`}
+                            className={cn(
+                              'h-2 rounded-full transition-all focus-ring',
+                              s._id === activeService._id ? 'w-6 bg-brand' : 'w-2 bg-line hover:bg-muted'
+                            )}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -469,9 +683,14 @@ export default function BookWizard() {
             </div>
           )}
 
-          {/* Nav */}
+          {/* Nav (desktop — mobile uses in-flow nav on early steps, sticky bar on final steps) */}
           {booking.step < 4 && (
-            <div className="mt-8 flex items-center justify-between">
+            <div
+              className={cn(
+                'mt-8 items-center justify-between',
+                booking.step < 3 ? 'flex' : 'hidden lg:flex'
+              )}
+            >
               <Button variant="ghost" onClick={goBack} disabled={booking.step === 0}>
                 <ChevronLeft className="h-4 w-4" />
                 Back
@@ -483,7 +702,7 @@ export default function BookWizard() {
             </div>
           )}
           {booking.step === 4 && (
-            <div className="mt-4">
+            <div className="mt-4 hidden lg:block">
               <Button variant="ghost" onClick={goBack}>
                 <ChevronLeft className="h-4 w-4" />
                 Back
@@ -492,7 +711,8 @@ export default function BookWizard() {
           )}
         </div>
 
-        {/* Summary */}
+        {/* Summary rail (final steps only) */}
+        {showSummary && (
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <div className="rounded-2xl border border-line bg-surface p-5 shadow-card">
             <h3 className="text-sm font-semibold text-ink">Summary</h3>
@@ -537,7 +757,43 @@ export default function BookWizard() {
             </div>
           </div>
         </aside>
+        )}
       </div>
+
+      {/* Mobile sticky summary bar (final steps only) */}
+      {showSummary && (
+      <div className="sticky bottom-4 z-30 mt-6 lg:hidden">
+        <div className="flex items-center gap-2 rounded-2xl border border-line bg-surface/95 px-3 py-2.5 shadow-pop backdrop-blur">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={goBack}
+            disabled={booking.step === 0}
+            aria-label="Back"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-ink">
+              {booking.service ? booking.service.name : 'No service yet'}
+            </p>
+            <p className="text-xs text-muted tnum">
+              {formatMoney(booking.subtotal, currency)} · {booking.totalDuration || 0} min
+            </p>
+          </div>
+          {booking.step < 4 ? (
+            <Button size="sm" onClick={goNext} disabled={!canProceed}>
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <span className="px-1 text-sm font-semibold text-ink tnum">
+              {formatMoney(booking.subtotal, currency)}
+            </span>
+          )}
+        </div>
+      </div>
+      )}
     </div>
   );
 }
