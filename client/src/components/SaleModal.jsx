@@ -78,7 +78,7 @@ export default function SaleModal({ open, onClose, onSaved }) {
         reset();
       }}
       title="Record sale"
-      description="Add everything you sold. Product stock goes down by itself."
+      description="Add what you sold below. Product stock goes down by itself."
       footer={
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-muted">
@@ -95,7 +95,7 @@ export default function SaleModal({ open, onClose, onSaved }) {
         </div>
       }
     >
-      <div className="grid gap-3 sm:grid-cols-[130px_1fr_90px_auto] sm:items-end">
+      <div className="grid gap-3 sm:grid-cols-[130px_1fr_90px] sm:items-end">
         <Select label="Type" value={kind} onChange={(e) => { setKind(e.target.value); setItemId(''); }}>
           <option value="service">Service</option>
           <option value="product">Product</option>
@@ -110,11 +110,15 @@ export default function SaleModal({ open, onClose, onSaved }) {
           ))}
         </Select>
         <Input label="Qty" type="number" min={1} max={99} value={qty} onChange={(e) => setQty(e.target.value)} />
-        <Button variant="outline" onClick={addLine}>
-          <Plus className="h-4 w-4" />
-          Add
-        </Button>
       </div>
+      <button
+        type="button"
+        onClick={addLine}
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line bg-surface-2/50 px-4 py-3 text-sm font-semibold text-muted transition-colors hover:border-brand hover:text-brand focus-ring"
+      >
+        <Plus className="h-4 w-4" />
+        Add item to this sale
+      </button>
 
       {lines.length > 0 ? (
         <ul className="mt-4 space-y-2">
@@ -139,7 +143,7 @@ export default function SaleModal({ open, onClose, onSaved }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-4 text-sm text-muted">No items yet — add at least one to record the sale.</p>
+        <p className="mt-4 text-sm text-muted">Nothing added yet — pick an item above and tap Add.</p>
       )}
     </Modal>
   );
