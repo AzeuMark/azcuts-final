@@ -120,7 +120,9 @@ function loadSize() {
 }
 
 function loadClassic() {
-  try { return localStorage.getItem('az-erd-style') === 'classic'; } catch { return false; }
+  // Classic (the original black-and-white ERD look) is the default.
+  // Only an explicit stored 'modern' choice opts into the rounded style.
+  try { return localStorage.getItem('az-erd-style') !== 'modern'; } catch { return true; }
 }
 
 // Intersection of a center-to-center ray with the node's rect border.
