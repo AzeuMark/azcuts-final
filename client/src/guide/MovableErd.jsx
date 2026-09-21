@@ -53,14 +53,17 @@ function parseTranslate(t) {
   return m ? { x: +m[1], y: +m[2] } : { x: 0, y: 0 };
 }
 
-// Mermaid edge id format: id_<from>_<to>_<counter> (entity names have no underscores).
+// Mermaid edge id format (verified against rendered output):
+//   id_entity-<from>-<i>_entity-<to>-<j>_<counter>
 function parseEdgeId(id) {
-  if (!id || !id.startsWith('id_')) return null;
-  const parts = id.slice(3).split('_');
-  if (parts.length < 3) return null;
-  parts.pop();
-  const a = parts.shift();
-  return { a, b: parts.join('_') };
+  const m = /^id_entity-(.+?)-\d+_entity-(.+?)-\d+_\d+$/.exec(id || '');
+  return m ? { a: m[1], b: m[2] } : null;
+}
+
+// Node group id format: <renderId>-entity-<name>-<index>
+function entityFromNodeId(id) {
+  const m = /-entity-(.+?)-\d+$/.exec(id || '');
+  return m ? m[1] : null;
 }
 
 // First (M) and last coordinate pairs of a path `d` string.
@@ -83,7 +86,7 @@ export default function MovableErd() {
   const dark = theme === 'dark';
   const [svg, setSvg] = useState('');
   const [error, setError] = useState('');
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(0);
   const wrapRef = useRef(null);
   const st = useRef(null); // { svgEl, nodes, edges, origViewBox }
   const drag = useRef(null);
@@ -93,7 +96,7 @@ export default function MovableErd() {
     let cancelled = false;
     setSvg('');
     setError('');
-    setReady(false);
+    setReady(0);
     st.current = null;
     mermaid.initialize({
       startOnLoad: false,
@@ -179,24 +182,30 @@ export default function MovableErd() {
       const svgEl = wrapRef.current?.querySelector('svg');
       if (!svgEl) { if (frames < 30) raf = requestAnimationFrame(setup); return; }
       let nodes = null;
+      let nodeError = '';
       try {
         nodes = {};
         for (const name of ENTITIES) {
-          let g = svgEl.querySelector(`g.nodes > g[data-id="${name}"]`);
-          if (!g) {
-            const groups = [...svgEl.querySelectorAll('g.nodes > g')];
-            const re = new RegExp(`^${name}\\b`);
-            g = groups.find((el) => re.test((el.textContent || '').trim()));
-          }
-          if (!g) { nodes = null; break; }
+          // Primary: the group's own id ends with -entity-<name>-<n>.
+          const groups = [...svgEl.querySelectorAll('g.nodes > g')];
+          let g = groups.find((el) => entityFromNodeId(el.getAttribute('id')) === name);
+          // Fallback: label text starts with the entity name (no \b — the
+          // attribute text runs on directly, e.g. "usersObjectId…").
+          if (!g) g = groups.find((el) => (el.textContent || '').trim().startsWith(name));
+          if (!g) { nodes = null; nodeError = `table not found: ${name}`; break; }
           const bbox = g.getBBox();
           const tr = parseTranslate(g.getAttribute('transform'));
           nodes[name] = { g, lx: bbox.x, ly: bbox.y, w: bbox.width, h: bbox.height, x: tr.x, y: tr.y, origX: tr.x, origY: tr.y };
         }
-      } catch {
+      } catch (err) {
         nodes = null;
+        nodeError = err?.message || 'measurement failed';
       }
-      if (!nodes) { if (frames < 30) raf = requestAnimationFrame(setup); return; }
+      if (!nodes) {
+        if (frames < 30) { raf = requestAnimationFrame(setup); return; }
+        setError(`Could not make tables movable (${nodeError}). The fixed chart above is unaffected.`);
+        return;
+      }
 
       const labelById = {};
       svgEl.querySelectorAll('g.edgeLabels > g.edgeLabel').forEach((o) => {
@@ -248,7 +257,7 @@ export default function MovableErd() {
           growViewBox();
         }
       } catch { /* start fresh */ }
-      setReady(true);
+      setReady(Object.keys(nodes).length);
     };
     raf = requestAnimationFrame(setup);
     return () => cancelAnimationFrame(raf);
@@ -310,7 +319,7 @@ export default function MovableErd() {
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
-          {ready ? 'Drag any table — its arrows follow without breaking.' : 'Preparing the movable chart…'}
+          {ready ? `Drag any table — its arrows follow without breaking (${ready}/8 ready).` : 'Preparing the movable chart…'}
         </p>
         <button
           type="button"
