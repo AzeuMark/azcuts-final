@@ -35,6 +35,7 @@ const AdminSystemSettings = lazy(() => import('./pages/admin/SystemSettings'));
 
 // GUIDE-ONLY (delete with client/src/guide/ before real-world deploy).
 const GuideHome = lazy(() => import('./guide/pages/GuideHome'));
+const SystemDesign = lazy(() => import('./guide/pages/SystemDesign'));
 const CustomerGuide = lazy(() => import('./guide/pages/CustomerGuide'));
 const BarberGuide = lazy(() => import('./guide/pages/BarberGuide'));
 const OwnerGuide = lazy(() => import('./guide/pages/OwnerGuide'));
@@ -71,6 +72,7 @@ export default function App() {
 
           {/* GUIDE-ONLY classmate tour (public; delete before real-world deploy) */}
           <Route path="/guide" element={<GuideHome />} />
+          <Route path="/guide/system-design" element={<SystemDesign />} />
           <Route path="/guide/customer" element={<CustomerGuide />} />
           <Route path="/guide/barber" element={<BarberGuide />} />
           <Route path="/guide/owner" element={<OwnerGuide />} />

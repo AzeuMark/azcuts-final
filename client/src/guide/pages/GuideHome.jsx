@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Scissors, Briefcase, Crown, Network, Database, TriangleAlert } from 'lucide-react';
+import { Scissors, Briefcase, Crown, Network, Database, Workflow, TriangleAlert } from 'lucide-react';
 import GuideLayout from '../GuideLayout';
 import { DemoAccounts, BackLinks } from '../FeatureCard';
 import { DEMO_ACCOUNTS } from '../data';
@@ -9,6 +9,7 @@ const CARDS = [
   { to: '/guide/barber', icon: Briefcase, title: 'Barber tour', desc: 'Assigned queue → confirm → serve → record sales → update stock. 11 paper features.' },
   { to: '/guide/owner', icon: Crown, title: 'Owner tour', desc: 'Dashboard → users → catalog → assign → sales → inventory → reports. 10 paper groups.' },
   { to: '/guide/hipo-ipo', icon: Network, title: 'HIPO + IPO', desc: 'System hierarchy chart and input-process-output tables drawn from this build.' },
+  { to: '/guide/system-design', icon: Workflow, title: 'System detail design', desc: 'Icon flow chart: access chain, role portals, data flow, and sales loop — every box mapped to its page + API.' },
   { to: '/guide/database', icon: Database, title: 'Database chart', desc: 'Every collection, key field, and relationship in one ER diagram.' },
 ];
 

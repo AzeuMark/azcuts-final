@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Scissors, Briefcase, Crown, Network, Database } from 'lucide-react';
+import { ArrowLeft, BookOpen, Scissors, Briefcase, Crown, Network, Database, Workflow } from 'lucide-react';
 import ThemeToggle from '../components/ui/ThemeToggle';
 import cn from '../utils/cn';
 
@@ -9,6 +9,7 @@ const TABS = [
   { to: '/guide/barber', label: 'Barber', icon: Briefcase },
   { to: '/guide/owner', label: 'Owner', icon: Crown },
   { to: '/guide/hipo-ipo', label: 'HIPO + IPO', icon: Network },
+  { to: '/guide/system-design', label: 'System Design', icon: Workflow },
   { to: '/guide/database', label: 'Database', icon: Database },
 ];
 
