@@ -1,6 +1,6 @@
 import GuideLayout from '../GuideLayout';
 import Mermaid from '../Mermaid';
-import ErdCanvas from '../ErdCanvas';
+import MovableErd from '../MovableErd';
 import { BackLinks } from '../FeatureCard';
 import { ERD_CHART } from '../diagrams';
 
@@ -23,15 +23,10 @@ export default function DatabaseChart() {
       <h2 className="mb-3 font-serif text-xl font-semibold">Original chart (fixed tables)</h2>
       <Mermaid chart={ERD_CHART} caption="Entity-relationship diagram of the live database" />
 
-      <h2 className="mb-3 mt-10 font-serif text-xl font-semibold">Playground (movable tables)</h2>
-      <figure className="overflow-x-auto rounded-2xl border border-line bg-surface p-4 shadow-card">
-        <div className="min-w-[760px]">
-          <ErdCanvas />
-        </div>
-        <figcaption className="mt-3 text-center text-xs text-muted">
-          Same collections as the chart above — drag the tables, resize the playground, every line follows
-        </figcaption>
-      </figure>
+      <h2 className="mb-3 mt-10 font-serif text-xl font-semibold">Movable (same original design)</h2>
+      <div className="min-w-0">
+        <MovableErd />
+      </div>
 
       <h2 className="mb-3 mt-10 font-serif text-xl font-semibold">Reading notes</h2>
       <div className="grid gap-4 lg:grid-cols-2">
