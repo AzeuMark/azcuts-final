@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Table, Scaling } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
 // Interactive ERD: every collection is a draggable table; connectors are
@@ -108,6 +108,21 @@ function loadPos() {
   return { ...DEFAULT_POS };
 }
 
+function loadSize() {
+  try {
+    const raw = localStorage.getItem('az-erd-size');
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s.w >= 800 && s.h >= 400) return s;
+    }
+  } catch { /* default canvas */ }
+  return { w: 1120, h: 560 };
+}
+
+function loadClassic() {
+  try { return localStorage.getItem('az-erd-style') === 'classic'; } catch { return false; }
+}
+
 // Intersection of a center-to-center ray with the node's rect border.
 function clipBorder(p, w, h, dx, dy) {
   const tx = dx === 0 ? Infinity : w / 2 / Math.abs(dx);
@@ -125,21 +140,28 @@ export default function ErdCanvas() {
   const { theme } = useTheme();
   const dark = theme === 'dark';
   const [pos, setPos] = useState(loadPos);
+  const [size, setSize] = useState(loadSize);
+  const [classic, setClassic] = useState(loadClassic);
   const svgRef = useRef(null);
   const drag = useRef(null);
+  const rsz = useRef(null);
 
-  const fill = dark ? '#171A21' : '#FFFFFF';
-  const headFill = dark ? '#1F232C' : '#F1F3F7';
-  const stroke = '#0EA5E9';
-  const text = dark ? '#F3F4F6' : '#111827';
-  const sub = dark ? '#9CA3AF' : '#6B7280';
-  const edge = '#0EA5E9';
-  const pill = dark ? '#1F232C' : '#F1F3F7';
-  const pillStroke = dark ? '#232733' : '#E5E7EB';
+  // Classic = plain black-and-white ERD tables, square corners. Modern keeps
+  // the theme-aware rounded look. Classic stays black-on-white in both themes.
+  const fill = classic ? '#FFFFFF' : dark ? '#171A21' : '#FFFFFF';
+  const headFill = classic ? '#FFFFFF' : dark ? '#1F232C' : '#F1F3F7';
+  const stroke = classic ? '#000000' : '#0EA5E9';
+  const text = classic ? '#000000' : dark ? '#F3F4F6' : '#111827';
+  const sub = classic ? '#000000' : dark ? '#9CA3AF' : '#6B7280';
+  const fkColor = classic ? '#000000' : '#0EA5E9';
+  const edge = classic ? '#000000' : '#0EA5E9';
+  const pill = classic ? '#FFFFFF' : dark ? '#1F232C' : '#F1F3F7';
+  const pillStroke = classic ? '#000000' : dark ? '#232733' : '#E5E7EB';
+  const corner = classic ? 0 : 12;
 
   const toSvg = (e) => {
     const r = svgRef.current.getBoundingClientRect();
-    return { x: ((e.clientX - r.left) / r.width) * 1120, y: ((e.clientY - r.top) / r.height) * 560 };
+    return { x: ((e.clientX - r.left) / r.width) * size.w, y: ((e.clientY - r.top) / r.height) * size.h };
   };
 
   const onNodeDown = (id) => (e) => {
@@ -153,8 +175,8 @@ export default function ErdCanvas() {
     if (!drag.current) return;
     const p = toSvg(e);
     const { id, dx, dy } = drag.current;
-    const nx = Math.min(1120 - W, Math.max(0, p.x - dx));
-    const ny = Math.min(560 - 40, Math.max(0, p.y - dy));
+    const nx = Math.min(size.w - W, Math.max(0, p.x - dx));
+    const ny = Math.min(size.h - 40, Math.max(0, p.y - dy));
     setPos((prev) => ({ ...prev, [id]: { x: Math.round(nx), y: Math.round(ny) } }));
   };
 
@@ -167,6 +189,55 @@ export default function ErdCanvas() {
   const reset = () => {
     try { localStorage.removeItem('az-erd-pos'); } catch { /* ignore */ }
     setPos({ ...DEFAULT_POS });
+  };
+
+  const toggleStyle = () => {
+    setClassic((c) => {
+      try { localStorage.setItem('az-erd-style', c ? 'modern' : 'classic'); } catch { /* ignore */ }
+      return !c;
+    });
+  };
+
+  // Canvas resize via the corner grip: drag to grow/shrink the playground.
+  const onGripDown = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const r = svgRef.current.getBoundingClientRect();
+    rsz.current = {
+      sx: e.clientX, sy: e.clientY, w: size.w, h: size.h,
+      scaleX: size.w / r.width, scaleY: size.h / r.height,
+    };
+    window.addEventListener('pointermove', onGripMove);
+    window.addEventListener('pointerup', onGripUp, { once: true });
+  };
+
+  const onGripMove = (e) => {
+    const s = rsz.current;
+    if (!s) return;
+    const w = Math.min(2400, Math.max(800, Math.round((s.w + (e.clientX - s.sx) * s.scaleX) / 20) * 20));
+    const h = Math.min(1600, Math.max(400, Math.round((s.h + (e.clientY - s.sy) * s.scaleY) / 20) * 20));
+    setSize({ w, h });
+    try { localStorage.setItem('az-erd-size', JSON.stringify({ w, h })); } catch { /* ignore */ }
+  };
+
+  const onGripUp = () => {
+    window.removeEventListener('pointermove', onGripMove);
+    // Pull any tables back inside if the canvas shrank past them.
+    setSize((s) => {
+      setPos((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((id) => {
+          const t = TABLES.find((x) => x.id === id);
+          next[id] = {
+            x: Math.min(s.w - W, Math.max(0, next[id].x)),
+            y: Math.min(s.h - 40, Math.max(0, next[id].y)),
+          };
+        });
+        return next;
+      });
+      return s;
+    });
+    rsz.current = null;
   };
 
   const center = (id) => {
@@ -194,19 +265,32 @@ export default function ErdCanvas() {
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-sm text-muted">Drag any table — its arrows follow without breaking.</p>
-        <button
-          type="button"
-          onClick={reset}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-brand"
-        >
-          <RotateCcw className="h-4 w-4" /> Reset layout
-        </button>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted">
+          Drag any table — its arrows follow without breaking. Drag the corner grip to resize the playground ({size.w}×{size.h}).
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleStyle}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-brand"
+            title={classic ? 'Switch to the rounded theme-aware style' : 'Switch to plain black-and-white tables'}
+          >
+            <Table className="h-4 w-4" /> {classic ? 'Modern style' : 'Classic style'}
+          </button>
+          <button
+            type="button"
+            onClick={reset}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-brand"
+          >
+            <RotateCcw className="h-4 w-4" /> Reset layout
+          </button>
+        </div>
       </div>
+      <div className="relative">
       <svg
         ref={svgRef}
-        viewBox="0 0 1120 560"
+        viewBox={`0 0 ${size.w} ${size.h}`}
         className="h-auto w-full select-none"
         role="img"
         aria-label="Interactive AzCuts database diagram — drag tables to rearrange"
@@ -247,7 +331,7 @@ export default function ErdCanvas() {
               <path d={`M${p0.x},${p0.y} Q${c.x},${c.y} ${p2.x},${p2.y}`} fill="none" stroke={edge} strokeWidth="1.8" markerEnd="url(#erd-arr)" />
               <text x={e1.x} y={e1.y - 4} textAnchor="middle" fontSize="10" fontWeight="700" fill={sub}>{fromEnd}</text>
               <text x={e2.x} y={e2.y - 4} textAnchor="middle" fontSize="10" fontWeight="700" fill={sub}>{toEnd}</text>
-              <rect x={mid.x - w / 2} y={mid.y - 11} width={w} height={20} rx={10} fill={pill} stroke={pillStroke} />
+              <rect x={mid.x - w / 2} y={mid.y - 11} width={w} height={20} rx={classic ? 0 : 10} fill={pill} stroke={pillStroke} />
               <text x={mid.x} y={mid.y + 3.5} textAnchor="middle" fontSize="10.5" fill={sub}>{label}</text>
             </g>
           );
@@ -264,9 +348,15 @@ export default function ErdCanvas() {
               style={{ cursor: 'grab', touchAction: 'none' }}
             >
               <title>Drag to move {t.title}</title>
-              <rect width={W} height={h} rx={12} fill={fill} stroke={stroke} strokeWidth="1.5" />
-              <rect width={W} height={HEAD_H} rx={12} fill={headFill} />
-              <rect y={HEAD_H - 12} width={W} height={12} fill={headFill} stroke="none" />
+              <rect width={W} height={h} rx={corner} fill={fill} stroke={stroke} strokeWidth="1.5" />
+              {classic ? (
+                <line x1={0} y1={HEAD_H} x2={W} y2={HEAD_H} stroke={stroke} strokeWidth="1.5" />
+              ) : (
+                <g>
+                  <rect width={W} height={HEAD_H} rx={corner} fill={headFill} />
+                  <rect y={HEAD_H - 12} width={W} height={12} fill={headFill} stroke="none" />
+                </g>
+              )}
               <text x={12} y={22} fontSize="13" fontWeight="700" fill={text} fontFamily="ui-monospace, monospace">{t.title}</text>
               <text x={W - 12} y={22} textAnchor="end" fontSize="11" fill={sub}>⠿</text>
               {t.fields.map(([f, kind], j) => (
@@ -277,7 +367,7 @@ export default function ErdCanvas() {
                   fontSize="10.5"
                   fontFamily="ui-monospace, monospace"
                   fontWeight={kind === 'pk' ? 700 : 400}
-                  fill={kind === 'fk' ? edge : kind === 'pk' || kind === 'uk' ? text : sub}
+                  fill={kind === 'fk' ? fkColor : kind === 'pk' || kind === 'uk' ? text : sub}
                 >
                   {f}
                 </text>
@@ -286,6 +376,14 @@ export default function ErdCanvas() {
           );
         })}
       </svg>
+      <div
+        onPointerDown={onGripDown}
+        title="Drag to resize the playground"
+        className="absolute bottom-1 right-1 flex h-8 w-8 cursor-nwse-resize items-center justify-center rounded-lg border border-line bg-surface text-muted shadow-card transition-colors hover:text-brand"
+      >
+        <Scaling className="h-4 w-4" />
+      </div>
+      </div>
     </div>
   );
 }
