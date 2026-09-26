@@ -1,7 +1,23 @@
 {
   "schoolComplianceMode": true,
   "version": "1.0.0",
-  "notes": "Master feature toggle for AzCuts school compliance. true = enabled and visible. false = disabled/hidden (code stays, gated by flag, can be re-enabled later). All school-requirements.txt features are true. All extras are false. Agreed decisions: DISABLE-only (never delete), per-barber stock flag, manual stock usage only.",
+  "notes": "Master feature toggle for AzCuts school compliance. true = enabled and visible. false = disabled/hidden (code stays, gated by flag, can be re-enabled later). All school-requirements.txt features are true. All extras are false. Agreed decisions: DISABLE-only (never delete), per-barber stock flag, manual stock usage only. colors: editable pill hex colors (#rgb or #rrggbb) for appointment statuses + user roles; served via GET /settings/public, invalid values fall back to defaults.",
+  "colors": {
+    "statuses": {
+      "pending": "#D97706",
+      "selected": "#0EA5E9",
+      "assigned": "#8B5CF6",
+      "accepted": "#2563EB",
+      "in_service": "#E11D48",
+      "done": "#16A34A",
+      "cancelled": "#DC2626"
+    },
+    "roles": {
+      "admin": "#E11D48",
+      "staff": "#2563EB",
+      "user": "#74726C"
+    }
+  },
   "features": {
     "userAccountManagement": {
       "register": true,

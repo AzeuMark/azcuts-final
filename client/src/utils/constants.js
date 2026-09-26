@@ -19,17 +19,65 @@ export const SYSTEM_MODES = { ONLINE: 'online', MAINTENANCE: 'maintenance', OFFL
 export const SERVICE_CATEGORIES = { HAIRCUT: 'haircut', SALON: 'salon' };
 export const USER_STATUS = { ACTIVE: 'active', INACTIVE: 'inactive', IN_SERVICE: 'in_service' };
 
-// Appointment status → label + tint classes for StatusBadge. Never color-only:
-// every badge carries a text label (accessibility, PRODUCT.md).
+// Appointment status → label for StatusBadge. The tint comes from the editable
+// branding colors (see below), never color-only: every badge carries text.
 export const STATUS_META = {
-  pending: { label: 'Pending', classes: 'bg-warning/10 text-warning ring-1 ring-inset ring-warning/25' },
-  selected: { label: 'Selected', classes: 'bg-accent/10 text-accent ring-1 ring-inset ring-accent/25' },
-  assigned: { label: 'Assigned', classes: 'bg-violet-500/10 text-violet-600 ring-1 ring-inset ring-violet-500/25' },
-  accepted: { label: 'Accepted', classes: 'bg-info/10 text-info ring-1 ring-inset ring-info/25' },
-  in_service: { label: 'In service', classes: 'bg-brand/10 text-brand ring-1 ring-inset ring-brand/25' },
-  done: { label: 'Done', classes: 'bg-success/10 text-success ring-1 ring-inset ring-success/25' },
-  cancelled: { label: 'Cancelled', classes: 'bg-danger/10 text-danger ring-1 ring-inset ring-danger/25' },
+  pending: { label: 'Pending' },
+  selected: { label: 'Selected' },
+  assigned: { label: 'Assigned' },
+  accepted: { label: 'Accepted' },
+  in_service: { label: 'In service' },
+  done: { label: 'Done' },
+  cancelled: { label: 'Cancelled' },
 };
+
+// Editable pill colors — root configuration.json -> colors, served via
+// GET /settings/public. These defaults preserve the shipped look whenever a
+// key is missing or not a valid hex color.
+export const DEFAULT_STATUS_COLORS = {
+  pending: '#D97706',
+  selected: '#0EA5E9',
+  assigned: '#8B5CF6',
+  accepted: '#2563EB',
+  in_service: '#E11D48',
+  done: '#16A34A',
+  cancelled: '#DC2626',
+};
+
+export const DEFAULT_ROLE_COLORS = {
+  admin: '#E11D48',
+  staff: '#2563EB',
+  user: '#74726C',
+};
+
+const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+// Accept #rgb or #rrggbb (normalized to #RRGGBB); anything else → fallback.
+export function normalizeHex(value, fallback) {
+  if (typeof value !== 'string' || !HEX_RE.test(value.trim())) return fallback;
+  let hex = value.trim();
+  if (hex.length === 4) {
+    hex = `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+  }
+  return hex.toUpperCase();
+}
+
+export function resolveColorMap(configMap, defaults) {
+  const out = {};
+  for (const [key, fallback] of Object.entries(defaults)) {
+    out[key] = normalizeHex(configMap?.[key], fallback);
+  }
+  return out;
+}
+
+// Pill (badge) inline style from a hex color: tinted bg + colored text + ring.
+export function pillStyle(hex) {
+  return {
+    backgroundColor: `${hex}1A`,
+    color: hex,
+    border: `1px solid ${hex}40`,
+  };
+}
 
 // Payment method presentation. GCash is shown but disabled (locked decision).
 export const PAYMENT_METHOD_META = {

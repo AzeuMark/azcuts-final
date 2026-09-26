@@ -2,6 +2,11 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import settingsApi from '../api/settings.api';
 import { setTimezone } from '../utils/datetime';
+import {
+  DEFAULT_STATUS_COLORS,
+  DEFAULT_ROLE_COLORS,
+  resolveColorMap,
+} from '../utils/constants';
 
 // Public landing/shop data: shopInfo, timezone, currency, systemMode, storeHours, services.
 export function useSettingsPublic() {
@@ -17,6 +22,18 @@ export function useSettingsPublic() {
   }, [query.data?.timezone]);
 
   return query;
+}
+
+// Editable branding pill colors (configuration.json -> colors). Missing or
+// invalid hex values fall back to the shipped defaults, so the UI never
+// renders a broken pill.
+export function useBranding() {
+  const { data } = useSettingsPublic();
+  const colors = data?.colors || {};
+  return {
+    statuses: resolveColorMap(colors.statuses, DEFAULT_STATUS_COLORS),
+    roles: resolveColorMap(colors.roles, DEFAULT_ROLE_COLORS),
+  };
 }
 
 export default useSettingsPublic;

@@ -1,4 +1,5 @@
 import cn from '../../utils/cn';
+import { pillStyle } from '../../utils/constants';
 
 const tones = {
   neutral: 'bg-surface-2 text-muted ring-1 ring-inset ring-line',
@@ -10,14 +11,17 @@ const tones = {
   info: 'bg-info/10 text-info ring-1 ring-inset ring-info/25',
 };
 
-export default function Badge({ tone = 'neutral', className, children, ...props }) {
+// `color` (hex) renders an editable-branding pill via inline style and takes
+// precedence over `tone`; otherwise the classic tone classes apply.
+export default function Badge({ tone = 'neutral', color, className, style, children, ...props }) {
   return (
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
-        tones[tone] || tones.neutral,
+        color ? null : tones[tone] || tones.neutral,
         className
       )}
+      style={color ? { ...pillStyle(color), ...style } : style}
       {...props}
     >
       {children}

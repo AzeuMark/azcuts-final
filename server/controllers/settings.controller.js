@@ -32,6 +32,7 @@ const getPublic = asyncHandler(async (req, res) => {
     services,
     staff,
     features: features.getFeatures(), // S0: single flag source for the client
+    colors: features.getColors(), // editable status/role pill hex colors
     schoolComplianceMode: features.schoolMode(),
   });
 });

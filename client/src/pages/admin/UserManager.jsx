@@ -14,20 +14,20 @@ import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 import { useAdminUsers } from '../../hooks/useAdmin';
-import { useSettingsPublic } from '../../hooks/useSettingsPublic';
+import { useSettingsPublic, useBranding } from '../../hooks/useSettingsPublic';
 import { useFeatures } from '../../hooks/useFeatures';
 import { useAuth } from '../../hooks/useAuth';
 import adminApi from '../../api/admin.api';
 import { getApiErrorMessage } from '../../config/axios';
 import { formatDate } from '../../utils/datetime';
 
-const ROLE_TONE = { admin: 'brand', staff: 'info', user: 'neutral' };
 const STATUS_TONE = { active: 'success', inactive: 'neutral', in_service: 'warning' };
 
 export default function UserManager() {
   const qc = useQueryClient();
   const { user: me } = useAuth();
   const { data: settings } = useSettingsPublic();
+  const { roles: roleColors } = useBranding();
   const nicknames = settings?.nicknames || [];
 
   const [role, setRole] = useState('');
@@ -85,7 +85,7 @@ export default function UserManager() {
       key: 'role',
       header: 'Role',
       render: (u) => (
-        <Badge tone={ROLE_TONE[u.role]}>
+        <Badge color={roleColors[u.role]}>
           {u.role}
           {u.role === 'staff' && u.nickname ? ` · ${u.nickname}` : ''}
         </Badge>

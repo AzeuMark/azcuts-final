@@ -92,6 +92,12 @@ function getFeatures() {
   return getConfig().features || {};
 }
 
+// Editable pill colors (root configuration.json -> colors). Always served —
+// never flag-gated. Missing/invalid keys fall back client-side to defaults.
+function getColors() {
+  return getConfig().colors || {};
+}
+
 // Test/admin escape hatch: reload without restarting the process.
 function reloadFeatures() {
   cache = loadFromDisk();
@@ -102,6 +108,7 @@ module.exports = {
   isEnabled,
   schoolMode,
   getFeatures,
+  getColors,
   getConfig,
   reloadFeatures,
   CONFIG_PATH,
