@@ -172,7 +172,6 @@ export default function UserManager() {
             <option value="">All statuses</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
-            <option value="in_service">In service</option>
           </Select>
           <Select
             value={sort}
@@ -356,10 +355,11 @@ function UserFormModal({ user, nicknames, isFirstAdmin = false, onClose, onSaved
           </Select>
         )}
         {isEdit && (
+          // Paper: activate/deactivate only — In service is system-set
+          // (auto on start, back to active on done), never hand-assigned.
           <Select label="Status" disabled={isFirstAdmin} {...register('status')}>
             <option value="active">Active</option>
             <option value="inactive">Inactive (deactivated)</option>
-            <option value="in_service">In service</option>
           </Select>
         )}
         {isEdit && isFirstAdmin && (
