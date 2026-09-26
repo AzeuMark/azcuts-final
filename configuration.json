@@ -6,16 +6,16 @@
     "statuses": {
       "pending": "#D97706",
       "selected": "#0EA5E9",
-      "assigned": "#8B5CF6",
+      "assigned": "#00fffb",
       "accepted": "#2563EB",
-      "in_service": "#E11D48",
+      "in_service": "#ffffff",
       "done": "#16A34A",
       "cancelled": "#DC2626"
     },
     "roles": {
       "admin": "#E11D48",
-      "staff": "#2563EB",
-      "user": "#74726C"
+      "staff": "#ffe84f",
+      "user": "#179401"
     }
   },
   "features": {

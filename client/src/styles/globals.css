@@ -195,3 +195,50 @@
     }
   }
 }
+
+/* In-Service status pill — RGB ring rotating around it so active work is
+   noticeable everywhere StatusBadge renders. A conic rainbow layer spins
+   behind the chip; the 1.5px padding is the only place it shows through. */
+@keyframes rgb-stroke-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rgb-pill {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 1.5px;
+  overflow: hidden;
+}
+
+.rgb-pill::before {
+  content: '';
+  position: absolute;
+  inset: -150%;
+  background: conic-gradient(
+    #ff004c,
+    #ff8a00,
+    #ffee00,
+    #33dd66,
+    #00ccff,
+    #3366ff,
+    #cc33ff,
+    #ff004c
+  );
+  animation: rgb-stroke-spin 3s linear infinite;
+}
+
+.rgb-pill-inner {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  background-color: rgb(var(--color-surface));
+}

@@ -1086,3 +1086,12 @@ useSettingsPublic, StatusBadge, Badge, UserManager.
 Every route now sets `document.title` via a central `RouteTitle` map in
 `App.jsx` (e.g. Admin Dashboard / Staff Dashboard / Book a Service /
 My Bookings / User Manager / System Settings — AzCuts). File: client App.jsx.
+
+## F6 — In-Service animated RGB stroke
+
+The In-Service pill renders an RGB ring rotating around it (spinning conic
+rainbow layer behind the chip, `rgb-stroke-spin` in `globals.css`) with a
+theme-aware surface chip inside, tinted by the editable `in_service`
+branding color — visible in both themes and everywhere `StatusBadge`
+renders. Honors the global reduced-motion guard. Files: client globals.css,
+StatusBadge.jsx.
