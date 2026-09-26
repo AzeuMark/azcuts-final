@@ -1068,3 +1068,21 @@ per scope). Table renders 1h 30m / 45 min. File: client Inventory.jsx.
 
 > Note: guide tours (flag-gated off) still describe the old pending-only
 > flow; defense-script.md updated to the new statuses.
+
+## F4 — Editable status/role pill colors (hex)
+
+`configuration.json` gains a top-level `colors` block (`statuses` for the 7
+appointment statuses, `roles` for admin/staff/user; `#rgb` or `#rrggbb`).
+Served via `GET /settings/public` (`getColors`, never flag-gated); the
+client resolves them in `useBranding()` with shipped-hex defaults for any
+missing/invalid value, so a bad edit can never break a pill. `StatusBadge`
+and `Badge` (new `color` prop) render tinted pills via inline style; the
+User Manager role badge now uses the editable role colors. Files:
+configuration.json, server features/settings, client constants,
+useSettingsPublic, StatusBadge, Badge, UserManager.
+
+## F5 — Accurate browser tab titles
+
+Every route now sets `document.title` via a central `RouteTitle` map in
+`App.jsx` (e.g. Admin Dashboard / Staff Dashboard / Book a Service /
+My Bookings / User Manager / System Settings — AzCuts). File: client App.jsx.

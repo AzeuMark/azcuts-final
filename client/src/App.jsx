@@ -1,5 +1,5 @@
-import { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Suspense, lazy, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import RealtimeBridge from './components/RealtimeBridge';
@@ -50,11 +50,59 @@ function PageFallback() {
   );
 }
 
+const BASE_TITLE = 'AzCuts — Barber Shop & Salon';
+
+// Specific-first: the first prefix match wins ('/' and parents last).
+const ROUTE_TITLES = [
+  ['/guide/system-design', 'System Design Guide - AzCuts'],
+  ['/guide/customer', 'Customer Guide - AzCuts'],
+  ['/guide/barber', 'Barber Guide - AzCuts'],
+  ['/guide/owner', 'Owner Guide - AzCuts'],
+  ['/guide/hipo-ipo', 'HIPO & IPO Guide - AzCuts'],
+  ['/guide/database', 'Database Guide - AzCuts'],
+  ['/guide', 'Guide - AzCuts'],
+  ['/app/book', 'Book a Service - AzCuts'],
+  ['/app/history', 'My Bookings - AzCuts'],
+  ['/app/settings', 'My Settings - AzCuts'],
+  ['/app', 'Book a Service - AzCuts'],
+  ['/staff/dashboard', 'Staff Dashboard - AzCuts'],
+  ['/staff/sales', 'My Sales - AzCuts'],
+  ['/staff/inventory', 'Staff Inventory - AzCuts'],
+  ['/staff/history', 'Served History - AzCuts'],
+  ['/staff/settings', 'Staff Settings - AzCuts'],
+  ['/staff', 'Staff Dashboard - AzCuts'],
+  ['/admin/dashboard', 'Admin Dashboard - AzCuts'],
+  ['/admin/analytics', 'Analytics - AzCuts'],
+  ['/admin/users', 'User Manager - AzCuts'],
+  ['/admin/inventory', 'Admin Inventory - AzCuts'],
+  ['/admin/sales', 'Admin Sales - AzCuts'],
+  ['/admin/history', 'Booking History - AzCuts'],
+  ['/admin/settings', 'System Settings - AzCuts'],
+  ['/admin', 'Admin Dashboard - AzCuts'],
+  ['/maintenance', 'Maintenance - AzCuts'],
+  ['/login', BASE_TITLE],
+  ['/register', BASE_TITLE],
+  ['/', BASE_TITLE],
+];
+
+// Keeps the browser tab title accurate to the page being viewed.
+function RouteTitle() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const hit = ROUTE_TITLES.find(([prefix]) =>
+      prefix === '/' ? pathname === '/' : pathname === prefix || pathname.startsWith(`${prefix}/`)
+    );
+    document.title = hit ? hit[1] : 'Page Not Found - AzCuts';
+  }, [pathname]);
+  return null;
+}
+
 // Route map — CLIENT_PLAN §2.1. Each portal is role-gated and shares DashboardShell.
 // S9: the AI assistant and real-time bridge mount only when their flags are on.
 export default function App() {
   return (
     <>
+      <RouteTitle />
       <FeatureGate feature="realtime.enabled">
         <RealtimeBridge />
       </FeatureGate>
