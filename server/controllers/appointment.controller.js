@@ -46,7 +46,7 @@ const bookableStaff = asyncHandler(async (req, res) => {
 
   const busy = await Appointment.find({
     assignedStaff: { $in: staff.map((s) => s._id) },
-    status: { $in: ['pending', 'accepted', 'in_service'] },
+    status: { $in: ['pending', 'selected', 'assigned', 'accepted', 'in_service'] },
     scheduledStart: { $lt: appt.scheduledEnd },
     scheduledEnd: { $gt: appt.scheduledStart },
     _id: { $ne: appt._id },

@@ -59,7 +59,12 @@ const appointmentSchema = new mongoose.Schema(
     scheduledEnd: { type: Date, required: true },
     status: {
       type: String,
-      enum: ['pending', 'accepted', 'in_service', 'done', 'cancelled'],
+      // pending   = just booked (Auto, unassigned, awaiting admin assignment)
+      // selected  = customer picked a specific barber (assigned, awaiting accept)
+      // assigned  = admin assigned a barber (awaiting accept)
+      // accepted  = barber accepted, ready to start
+      // in_service/done/cancelled as before (cancelled terminal)
+      enum: ['pending', 'selected', 'assigned', 'accepted', 'in_service', 'done', 'cancelled'],
       default: 'pending',
     },
     statusHistory: [statusHistorySchema],

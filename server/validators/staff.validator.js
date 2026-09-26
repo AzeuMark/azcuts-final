@@ -1,7 +1,14 @@
 const { body } = require('express-validator');
 
 const rejectRules = [
-  body('reason').optional().trim().isLength({ max: 300 }).withMessage('Reason too long'),
+  // Rejecting without a reason is not allowed — the admin sees it when
+  // re-assigning, so it must say something useful.
+  body('reason')
+    .trim()
+    .notEmpty()
+    .withMessage('A rejection reason is required')
+    .isLength({ min: 3, max: 300 })
+    .withMessage('Reason must be 3–300 characters'),
 ];
 
 const shiftRules = [

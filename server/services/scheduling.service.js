@@ -7,7 +7,7 @@ const ApiError = require('../utils/ApiError');
 const { dayjs, DEFAULT_TZ, weekdayKey } = require('../utils/datetime');
 
 // Statuses that occupy a staff member's time (block the slot).
-const ACTIVE_STATUSES = ['pending', 'accepted', 'in_service'];
+const ACTIVE_STATUSES = ['pending', 'selected', 'assigned', 'accepted', 'in_service'];
 
 // Two intervals overlap iff aStart < bEnd && aEnd > bStart.
 function overlaps(aStart, aEnd, bStart, bEnd) {

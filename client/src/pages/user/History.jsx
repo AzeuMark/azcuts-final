@@ -29,12 +29,14 @@ import { downloadReceiptPng } from '../../utils/receiptPng';
 const STATUS_TABS = [
   { value: 'all', label: 'All' },
   { value: 'pending', label: 'Pending' },
+  { value: 'selected', label: 'Selected' },
+  { value: 'assigned', label: 'Assigned' },
   { value: 'accepted', label: 'Accepted' },
   { value: 'done', label: 'Done' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-const CANCELLABLE = ['pending'];
+const CANCELLABLE = ['pending', 'selected'];
 
 export default function History() {
   const queryClient = useQueryClient();

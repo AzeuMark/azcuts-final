@@ -18,7 +18,7 @@ import { getApiErrorMessage } from '../../config/axios';
 import { formatMoney } from '../../utils/formatMoney';
 import { formatDateTime } from '../../utils/datetime';
 
-const STATUS_OPTIONS = ['all', 'pending', 'accepted', 'in_service', 'done', 'cancelled'];
+const STATUS_OPTIONS = ['all', 'pending', 'selected', 'assigned', 'accepted', 'in_service', 'done', 'cancelled'];
 const RANGE_OPTIONS = ['all', 'daily', 'weekly', 'monthly', 'yearly'];
 const ASSIGNMENT_OPTIONS = [
   { value: 'all', label: 'All bookings' },
@@ -120,10 +120,12 @@ export default function AppointmentHistory() {
       align: 'right',
       render: (a) => (
         <div className="flex items-center justify-end gap-1">
-          {a.status === 'pending' && !a.assignedStaff && (
+          {((a.status === 'pending' && !a.assignedStaff) ||
+            a.status === 'selected' ||
+            a.status === 'assigned') && (
             <Button variant="ghost" size="sm" onClick={() => setAssignTarget(a)} title="Assign barber">
               <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Assign</span>
+              <span className="hidden sm:inline">{a.status === 'assigned' ? 'Reassign' : 'Assign'}</span>
             </Button>
           )}
           {discountOn && DISCOUNTABLE.includes(a.status) ? (
@@ -311,6 +313,12 @@ function AssignModal({ appointment, onClose, onSaved }) {
 
   const staff = staffQ.data || [];
 
+  // Surface the last staff rejection so the admin knows why it came back.
+  const lastReject = [...(appointment.statusHistory || [])]
+    .reverse()
+    .find((h) => typeof h.note === 'string' && h.note.startsWith('Rejected:'));
+  const lastRejectReason = lastReject ? lastReject.note.replace(/^Rejected:\s*/, '') : null;
+
   return (
     <Modal
       open
@@ -338,6 +346,11 @@ function AssignModal({ appointment, onClose, onSaved }) {
           </option>
         ))}
       </Select>
+      {lastRejectReason && (
+        <p className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning ring-1 ring-inset ring-warning/25">
+          Last rejection: {lastRejectReason}
+        </p>
+      )}
       {staffQ.isLoading && <p className="mt-2 text-sm text-muted">Loading barbers…</p>}
       {!staffQ.isLoading && staff.length === 0 && (
         <p className="mt-2 text-sm text-warning">No barber is free for this time — pick another slot or wait for a cancellation.</p>

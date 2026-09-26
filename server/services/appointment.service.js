@@ -10,12 +10,19 @@ const notify = require('./notify.service');
 const salesService = require('./sales.service');
 const features = require('../config/features');
 
-// Legal appointment status transitions (SERVER_PLAN 2.1).
-// 'accepted -> pending' is the staff-reject-to-pool path handled specially below.
-// Once accepted, a booking can no longer be cancelled — only pending can.
+// Legal appointment status transitions (SERVER_PLAN 2.1 + Selected/Assigned).
+// pending   = just booked, unassigned (Auto) — admin assigns it
+// selected  = customer picked a barber — that barber accepts it directly
+// assigned  = admin assigned a barber — that barber accepts it
+// accepted  = barber accepted, ready to start (no longer cancellable except by admin)
+// 'accepted -> pending' is the staff-reject path handled specially below.
+// Cancel rights are role-based (see cancelAppointment): admin may cancel
+// anything except in_service/done/cancelled; customers only pending/selected.
 const ALLOWED = {
-  pending: ['accepted', 'cancelled'],
-  accepted: ['in_service', 'pending'],
+  pending: ['assigned', 'cancelled'],
+  selected: ['assigned', 'accepted', 'cancelled'],
+  assigned: ['accepted', 'cancelled'],
+  accepted: ['in_service'],
   in_service: ['done'],
   done: [],
   cancelled: [],
@@ -23,7 +30,7 @@ const ALLOWED = {
 
 // A booking is "active" (in flight) until it reaches a terminal state.
 // Used to enforce the one-active-booking-per-customer rule at creation time.
-const ACTIVE_STATUSES = ['pending', 'accepted', 'in_service'];
+const ACTIVE_STATUSES = ['pending', 'selected', 'assigned', 'accepted', 'in_service'];
 
 function assertTransition(from, to) {
   if (!ALLOWED[from] || !ALLOWED[from].includes(to)) {
@@ -146,6 +153,9 @@ async function createBooking({
 
   const receiptNo = await nextReceiptNo(tz);
 
+  // Auto (no barber) lands unassigned-pending for the admin; a customer-picked
+  // barber lands assigned-selected for that barber to accept directly.
+  const initialStatus = assignedStaff ? 'selected' : 'pending';
   const appointment = await Appointment.create({
     receiptNo,
     customer: customerId,
@@ -155,17 +165,17 @@ async function createBooking({
     priceSnapshot,
     scheduledStart: start,
     scheduledEnd: end,
-    status: 'pending',
+    status: initialStatus,
     autoAssigned,
     paymentMethod: 'cash',
     paymentStatus: 'unpaid',
     statusHistory: [
       {
-        status: 'pending',
+        status: initialStatus,
         at: new Date(),
         byUser: customerId,
         byRole: 'user',
-        note: assignedStaff ? 'Booked (staff selected)' : 'Booked (awaiting staff)',
+        note: assignedStaff ? 'Booked (barber selected, awaiting accept)' : 'Booked (awaiting admin assignment)',
       },
     ],
   });
@@ -176,20 +186,26 @@ async function createBooking({
   return populated;
 }
 
-// pending -> accepted. A staff accepts an appointment routed to them, or claims
-// one from the pending pool (assignedStaff = null). Done atomically to avoid two
-// staff claiming the same pooled booking.
+// selected/assigned -> accepted. A staff accepts an appointment the customer
+// picked (selected) or the admin routed (assigned). Done atomically to avoid
+// two staff claiming the same booking. Legacy tolerance: pending bookings
+// assigned before Selected existed are accepted the same way.
 async function acceptAppointment(id, staffActor) {
   const appt = await Appointment.findById(id);
   if (!appt) throw ApiError.notFound('Appointment not found');
-  if (appt.status !== 'pending') {
-    throw ApiError.conflict(`Cannot accept an appointment in status '${appt.status}'`);
+  const legacyPendingAssigned = appt.status === 'pending' && appt.assignedStaff;
+  if (!['selected', 'assigned'].includes(appt.status) && !legacyPendingAssigned) {
+    throw ApiError.conflict(
+      appt.status === 'pending'
+        ? 'This booking is awaiting admin assignment'
+        : `Cannot accept an appointment in status '${appt.status}'`
+    );
   }
   if (appt.assignedStaff && appt.assignedStaff.toString() !== staffActor.id) {
     throw ApiError.forbidden('This appointment is routed to another staff member');
   }
-  // S5 school mode: no pending pool — staff may only confirm appointments the
-  // admin assigned to them (no self-claiming unassigned bookings).
+  // S5 school mode: no pending pool — staff may only confirm appointments
+  // assigned to them (no self-claiming unassigned bookings).
   if (!appt.assignedStaff && !features.isEnabled('appointmentManagement.pendingPool')) {
     throw ApiError.forbidden('This booking is awaiting admin assignment');
   }
@@ -200,7 +216,7 @@ async function acceptAppointment(id, staffActor) {
   if (!free) throw ApiError.conflict('You have an overlapping appointment for this time');
 
   const updated = await Appointment.findOneAndUpdate(
-    { _id: id, status: 'pending', $or: [{ assignedStaff: null }, { assignedStaff: staffActor.id }] },
+    { _id: id, status: { $in: ['pending', 'selected', 'assigned'] }, $or: [{ assignedStaff: null }, { assignedStaff: staffActor.id }] },
     {
       $set: { assignedStaff: staffActor.id, status: 'accepted', acceptedAt: new Date() },
       $push: {
@@ -222,23 +238,28 @@ async function acceptAppointment(id, staffActor) {
   return populated;
 }
 
-// Staff reject (accepted/pending -> pending pool). Clears assignment, keeps the
-// booking pending, then re-routes to the next least-loaded staff (excluding the
-// rejecting one). If nobody is left, the booking is cancelled.
+// Staff reject (selected/assigned/accepted -> pending). Clears the assignment,
+// keeps the booking alive for the admin to re-assign (never auto-cancels in
+// school mode). A reason is strictly required so the admin can see why.
 async function rejectAppointment(id, staffActor, reason) {
+  const trimmed = reason === undefined || reason === null ? '' : String(reason).trim();
+  if (trimmed.length < 3) {
+    throw ApiError.badRequest('A rejection reason is required (at least 3 characters)');
+  }
   const appt = await Appointment.findById(id);
   if (!appt) throw ApiError.notFound('Appointment not found');
   if (!appt.assignedStaff || appt.assignedStaff.toString() !== staffActor.id) {
     throw ApiError.forbidden('This appointment is not assigned to you');
   }
-  if (!['pending', 'accepted'].includes(appt.status)) {
+  // Legacy tolerance: pending bookings assigned before Selected existed.
+  if (!['pending', 'selected', 'assigned', 'accepted'].includes(appt.status)) {
     throw ApiError.conflict(`Cannot reject an appointment in status '${appt.status}'`);
   }
 
   const rejectingStaffId = appt.assignedStaff;
   appt.assignedStaff = null;
   appt.status = 'pending';
-  pushHistory(appt, 'pending', staffActor, reason ? `Rejected: ${reason}` : 'Rejected by staff');
+  pushHistory(appt, 'pending', staffActor, `Rejected: ${trimmed}`);
 
   // S5 school mode: no re-route — the booking returns to the admin for manual
   // re-assignment (it must NOT auto-cancel a customer's booking).
@@ -314,14 +335,16 @@ async function advanceStatus(id, targetStatus, actor) {
   return populated;
 }
 
-// Admin manual assign (S5, school paper: "Assign available barber/stylist").
-// Sets/replaces the barber on a pending booking: the staff must exist, be
-// on-shift, and be free for the booked block (same overlap test as booking).
+// Admin manual assign (school paper: "Assign available barber/stylist").
+// Assigns Pending, confirms/changes Selected, or reassigns Assigned bookings:
+// the staff must exist, be on-shift, and be free for the booked block (same
+// overlap test as booking). The booking always lands in `assigned`.
 async function assignAppointment(id, staffId, adminActor) {
   const appt = await Appointment.findById(id);
   if (!appt) throw ApiError.notFound('Appointment not found');
-  if (appt.status !== 'pending') {
-    throw ApiError.conflict(`Only pending bookings can be assigned (status: '${appt.status}')`);
+  // Legacy tolerance: pending bookings assigned before Selected existed.
+  if (!['pending', 'selected', 'assigned'].includes(appt.status)) {
+    throw ApiError.conflict(`Only pending, selected, or assigned bookings can be assigned (status: '${appt.status}')`);
   }
 
   const staff = await User.findOne({ _id: staffId, role: 'staff' });
@@ -333,10 +356,12 @@ async function assignAppointment(id, staffId, adminActor) {
   });
   if (!free) throw ApiError.conflict('That staff member is already booked for this time');
 
+  const wasAssigned = appt.status === 'assigned';
   appt.assignedStaff = staff._id;
   appt.assignedBy = adminActor.id;
   appt.autoAssigned = false;
-  pushHistory(appt, 'pending', adminActor, `Assigned to ${staff.fullName} by admin`);
+  appt.status = 'assigned';
+  pushHistory(appt, 'assigned', adminActor, `${wasAssigned ? 'Reassigned' : 'Assigned'} to ${staff.fullName} by admin`);
 
   await appt.save();
   const populated = await appt.populate(POPULATE);
@@ -345,8 +370,11 @@ async function assignAppointment(id, staffId, adminActor) {
   return populated;
 }
 
-// pending -> cancelled. Allowed for the owner, the assigned staff, or admin.
-// Once accepted, a booking can no longer be cancelled (409 via the map above).
+// Cancel a booking. Terminal states and in-service work can never be
+// cancelled (by anyone — a started service can only be completed).
+// Role rules: admin may cancel pending/selected/assigned/accepted; the owning
+// customer only pending/selected; staff never cancel directly (they reject,
+// with a mandatory reason the admin can see).
 // S5: the reason is optional in school mode (defaults to 'Cancelled').
 async function cancelAppointment(id, actor, reason) {
   if (!reason || !String(reason).trim()) {
@@ -358,15 +386,24 @@ async function cancelAppointment(id, actor, reason) {
   const appt = await Appointment.findById(id);
   if (!appt) throw ApiError.notFound('Appointment not found');
 
-  const isOwner = actor.role === 'user' && appt.customer.toString() === actor.id;
-  const isAssignedStaff =
-    actor.role === 'staff' && appt.assignedStaff && appt.assignedStaff.toString() === actor.id;
-  const isAdmin = actor.role === 'admin';
-  if (!isOwner && !isAssignedStaff && !isAdmin) {
-    throw ApiError.forbidden('You cannot cancel this appointment');
+  if (appt.status === 'in_service') {
+    throw ApiError.conflict('Cannot cancel a service already in progress');
+  }
+  if (['done', 'cancelled'].includes(appt.status)) {
+    throw ApiError.conflict(`Cannot cancel an appointment in status '${appt.status}'`);
   }
 
-  assertTransition(appt.status, 'cancelled'); // 409 if done / in_service
+  const isOwner = actor.role === 'user' && appt.customer.toString() === actor.id;
+  const isAdmin = actor.role === 'admin';
+  if (actor.role === 'staff') {
+    throw ApiError.forbidden('Staff cannot cancel directly — please reject the booking with a reason instead');
+  }
+  if (!isOwner && !isAdmin) {
+    throw ApiError.forbidden('You cannot cancel this appointment');
+  }
+  if (isOwner && !['pending', 'selected'].includes(appt.status)) {
+    throw ApiError.forbidden('Only the admin can cancel a booking once it is assigned or accepted');
+  }
 
   appt.status = 'cancelled';
   appt.cancelReason = String(reason).trim();

@@ -7,7 +7,9 @@ const appointmentService = require('../services/appointment.service');
 
 // GET /staff/appointments?scope=incoming|mine
 // Staff only ever see their own assigned bookings (no pool, no other staff's).
-// incoming = pending bookings assigned to me (awaiting my accept)
+// incoming = bookings awaiting my accept: customer-selected + admin-assigned
+//            ('pending' included as legacy tolerance for rows assigned before
+//            the Selected status existed — new pending rows are never assigned)
 // mine     = my accepted / in-service queue
 const listAppointments = asyncHandler(async (req, res) => {
   const staffId = req.user.id;
@@ -16,7 +18,7 @@ const listAppointments = asyncHandler(async (req, res) => {
   const filter =
     scope === 'mine'
       ? { assignedStaff: staffId, status: { $in: ['accepted', 'in_service'] } }
-      : { assignedStaff: staffId, status: 'pending' };
+      : { assignedStaff: staffId, status: { $in: ['pending', 'selected', 'assigned'] } };
 
   const appointments = await Appointment.find(filter)
     .sort({ scheduledStart: 1 })

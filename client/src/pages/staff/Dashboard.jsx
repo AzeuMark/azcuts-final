@@ -41,7 +41,7 @@ export default function Dashboard() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: () => staffApi.reject(rejectTarget._id, rejectReason.trim() || undefined),
+    mutationFn: () => staffApi.reject(rejectTarget._id, rejectReason.trim()),
     onSuccess: (res) => {
       toast.success(res?.message || 'Appointment rejected');
       setRejectTarget(null);
@@ -175,21 +175,30 @@ export default function Dashboard() {
           setRejectTarget(null);
           setRejectReason('');
         }}
-        onConfirm={() => rejectMutation.mutate()}
+        onConfirm={() => {
+          if (rejectReason.trim().length < 3) {
+            toast.error('Please give a short reason (at least 3 characters)');
+            return;
+          }
+          rejectMutation.mutate();
+        }}
         title="Reject this appointment?"
-        description="It'll return to the admin for manual re-assignment."
+        description="It'll return to the admin for manual re-assignment. Your reason is required and the admin will see it."
         confirmLabel="Reject"
         tone="danger"
         loading={rejectMutation.isPending}
       >
         <Textarea
-          label="Reason (optional)"
+          label="Reason (required)"
           rows={3}
           maxLength={300}
           placeholder="e.g. Running behind schedule"
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
         />
+        {rejectReason.trim().length < 3 && (
+          <p className="mt-2 text-xs text-muted">A short reason is required so the admin knows why it came back.</p>
+        )}
       </ConfirmDialog>
 
       <SaleModal open={saleOpen} onClose={() => setSaleOpen(false)} onSaved={() => setSaleOpen(false)} />

@@ -5,6 +5,8 @@ export const ROLES = { USER: 'user', STAFF: 'staff', ADMIN: 'admin' };
 
 export const APPOINTMENT_STATUS = {
   PENDING: 'pending',
+  SELECTED: 'selected',
+  ASSIGNED: 'assigned',
   ACCEPTED: 'accepted',
   IN_SERVICE: 'in_service',
   DONE: 'done',
@@ -21,6 +23,8 @@ export const USER_STATUS = { ACTIVE: 'active', INACTIVE: 'inactive', IN_SERVICE:
 // every badge carries a text label (accessibility, PRODUCT.md).
 export const STATUS_META = {
   pending: { label: 'Pending', classes: 'bg-warning/10 text-warning ring-1 ring-inset ring-warning/25' },
+  selected: { label: 'Selected', classes: 'bg-accent/10 text-accent ring-1 ring-inset ring-accent/25' },
+  assigned: { label: 'Assigned', classes: 'bg-violet-500/10 text-violet-600 ring-1 ring-inset ring-violet-500/25' },
   accepted: { label: 'Accepted', classes: 'bg-info/10 text-info ring-1 ring-inset ring-info/25' },
   in_service: { label: 'In service', classes: 'bg-brand/10 text-brand ring-1 ring-inset ring-brand/25' },
   done: { label: 'Done', classes: 'bg-success/10 text-success ring-1 ring-inset ring-success/25' },

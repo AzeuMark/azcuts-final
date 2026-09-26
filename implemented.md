@@ -941,61 +941,61 @@ Read in full: all of `/server` except `node_modules` (entry points, `ai/`, `conf
 
 ---
 
-# SCHOOL COMPLIANCE BUILD S0–S10 (2026-09-19)
+# SCHOOL COMPLIANCE BUILD S0ï¿½S10 (2026-09-19)
 
 Per `school-update-plan.md`: `school-requirements.txt` is the scope truth.
 All non-paper features DISABLED behind root `configuration.json`
 (`schoolComplianceMode: true`, DISABLE-only per owner decision); missing
 paper modules (Products, Inventory, Sales) built new. Commits `defd7ba`?S10.
 
-- **S0 — Flag foundation** (`defd7ba`): root `configuration.json`;
+- **S0 ï¿½ Flag foundation** (`defd7ba`): root `configuration.json`;
   `server/config/features.js` (loader + school denylist + legacy fallback) +
   `middleware/requireFeature.js`; flags exposed via `GET /settings/public`;
   systemMode/login pass-through (always online); chatbot 503;
   client `config/features.js` + `hooks/useFeatures.js` + `FeatureGate.jsx`.
   Verified live: health 200, public forces online+school, chatbot 503.
-- **S1 — Models + seeds** (`c4bfda0`): `Product` (+Mongo image pattern),
+- **S1 ï¿½ Models + seeds** (`c4bfda0`): `Product` (+Mongo image pattern),
   `Inventory` (ledger: stock_in/sale/usage/adjustment), `Sale`
   (snapshotted items, `SL-YYYYMMDD-####` via `utils/saleNo.js`);
   `Appointment.saleId/assignedBy`, `User.canUpdateStock` (default false).
   `products.seed.json` (5 products) + opening `stock_in` ledger entries.
   Verified: seed ? 5 products, 82 units, 5 ledger rows.
-- **S2 — Products backend** (`2d59313`): validator/controller/routes
+- **S2 ï¿½ Products backend** (`2d59313`): validator/controller/routes
   (`GET /products` public active-only, admin CRUD, `/products/:id/image`
   stream); `stockQuantity` NOT writable (ledger-only, S3). 11/11 live checks.
-- **S3 — Inventory backend** (`ee56636`): `services/inventory.service.js`
+- **S3 ï¿½ Inventory backend** (`ee56636`): `services/inventory.service.js`
   `applyChange` (atomic guarded `$inc`, oversell-safe) + validator/controller/
   routes (`GET levels/movements`, `PATCH update`); staff needs
   `canUpdateStock` grant (via `PUT /admin/users/:id`, staff-only);
   `updateUser` validator extended. 24/24 live checks.
-- **S4 — Sales backend** (`a87347e`): validator/`services/sales.service.js`
+- **S4 ï¿½ Sales backend** (`a87347e`): validator/`services/sales.service.js`
   (`recordSale` live pricing + atomic decrement + orphan rollback;
   `autoCreateServiceSale` idempotent on `done`, never breaks the transition)
   + controller/routes (`POST /sales`, `GET /sales/mine`, `GET /sales`);
   `Inventory.applyChange` gained `referenceSale`. 17/17 live checks.
   Fixed real bug: `stock.routes` bare `router.use` guard intercepted later
   routers (customers 403 on booking) ? per-route guards.
-- **S5 — Appointments to paper** (`eac6ef3`): `assignAppointment` service +
+- **S5 ï¿½ Appointments to paper** (`eac6ef3`): `assignAppointment` service +
   `PATCH /appointments/:id/assign` (admin, pending-only, on-shift + free
   checks, `assignedBy` audit); gates: extras 400, one-booking-limit off,
   auto-assign off (unassigned?admin assigns), pool-claim 403, reject returns
   to admin (no auto-cancel), cancel reason optional, rate/discount routes 403.
   16/16 live checks.
-- **S6 — Reports + dashboard** (`dbd3cde`): `salesSummary` (from `sales`),
+- **S6 ï¿½ Reports + dashboard** (`dbd3cde`): `salesSummary` (from `sales`),
   `inventoryReport` (levels/low/out/movements), `reportByKind`
   (appointments/sales/inventory, JSON+CSV), `summary?source=sales`;
   dashboard += `shopSalesToday/Count`, `lowStockCount`, `outOfStockCount`,
   `productCount` (legacy counters intact). 10/10 live checks.
-- **S7 — Barber client** (`f7c2b13`): `sales/product/stock` APIs + hooks,
+- **S7 ï¿½ Barber client** (`f7c2b13`): `sales/product/stock` APIs + hooks,
   `SaleModal`, `StockUpdateModal`, staff `Sales` + `Inventory` pages
   (grant-gated updates), dashboard Record-sale entry, nav + routes.
   Build green + 5/5 endpoint checks.
-- **S8 — Owner client** (`deff505`): admin `Sales` page, Inventory
+- **S8 ï¿½ Owner client** (`deff505`): admin `Sales` page, Inventory
   `Products` (CRUD) + `Stock` tabs, history `AssignModal`, UserManager
   stock-access checkbox + deactivation labels, Analytics
   Appointments/Sales/Inventory tabs with kind-aware export, dashboard
   widgets. Build green + 8/8 live checks.
-- **S9 — Global gating** (`035db2a`): wizard skips extras step (4-step),
+- **S9 ï¿½ Global gating** (`035db2a`): wizard skips extras step (4-step),
   history hides ratings/PNG + optional cancel reason, ChatWidget/
   RealtimeBridge/socket mount only when flagged, ThemeSync local-only,
   maintenance redirect off, landing demo stats/testimonials off, staff
@@ -1003,7 +1003,7 @@ paper modules (Products, Inventory, Sales) built new. Commits `defd7ba`?S10.
   hidden, nicknames gated in UserManager/AccountSettings. Build green +
   gate regression (online-forced, chatbot 503, discount 403).
 
-**S10 — Verification (this entry): 40/40 paper-bullet checks green** against
+**S10 ï¿½ Verification (this entry): 40/40 paper-bullet checks green** against
 the live dev server (customer 7, barber 11 incl. logout, owner 22 incl. all
 three report kinds in JSON+CSV). Baseline restored afterward: 0 sales,
 0 appointments, ledger 10, Pomade 20, 5 products. Decisions locked:
@@ -1020,3 +1020,51 @@ Next: defense demo per `defense-script.md`.
 > customer `staffId` (400) and rejects slots with no free on-shift barber
 > (409). Assignment stays exclusively on `PATCH /appointments/:id/assign`
 > (admin). Guide customer tour updated to match.
+
+> Update (booking: barber picker returns): reversed by F1 below â€” customers
+> pick a barber (Selected) or Auto (Pending); see FOLLOW-UP CHANGES.
+
+---
+
+# FOLLOW-UP CHANGES (2026-09-26, owner requests)
+
+Per-role status flow, User Manager cleanup, and service duration form.
+
+## F1 â€” Booking statuses Selected + Assigned
+
+Lifecycle is now Pending (just booked, Auto, unassigned) â†’ Selected
+(customer picked a barber) / Assigned (admin assigned) â†’ Accepted (barber
+accepted, ready to start) â†’ in_service â†’ done, with cancelled terminal.
+Staff accepts Selected directly (no admin confirm); admin assigns/reassigns
+Pending/Selected/Assigned (server re-checks on-shift + free); staff Incoming
+shows my Selected + Assigned. Cancel is role-based: admin anything except
+in_service/done/cancelled, customer Pending/Selected only, staff no direct
+cancel (reject instead). Reject still returns to unassigned Pending for the
+admin but now strictly requires a reason (min 3 chars, 422/400 otherwise)
+and the admin sees it in the Assign modal (last Rejected statusHistory
+note). Legacy pending+assigned rows (pre-Selected) are tolerated in
+staff/incoming/accept/reject/assign queries, so no DB migration was needed.
+Files: server Appointment model enum, appointment.service
+(ALLOWED/ACTIVE map, create/accept/reject/assign/cancel), scheduling
+ACTIVE_STATUSES, staff.controller filter, appointment.controller busy set,
+staff.validator rejectRules, client STATUS_META/constants, admin
+AppointmentHistory (options + Assign/Reassign + reject banner), staff
+Dashboard (required reason), customer History (tabs + cancellable),
+BookWizard success copy, defense-script demo path.
+
+## F2 â€” User Manager: Active/Inactive only
+
+Paper lists add/update/deactivate/assign-roles, so the In service option was
+removed from the User Manager status dropdown and status filter. Backend
+enum untouched: the system still auto-sets in_service on start and back to
+active on done, and badges still display it. File: client UserManager.jsx.
+
+## F3 â€” Service duration Hours + Minutes
+
+Admin Inventory service form now takes Duration hours (0â€“8) + minutes
+(0â€“59, step 5) combining into the single durationMinutes payload (no
+model/migration change; slots/booking/seeds untouched; extras form untouched
+per scope). Table renders 1h 30m / 45 min. File: client Inventory.jsx.
+
+> Note: guide tours (flag-gated off) still describe the old pending-only
+> flow; defense-script.md updated to the new statuses.

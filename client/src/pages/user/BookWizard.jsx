@@ -308,7 +308,13 @@ export default function BookWizard() {
 
   // ---------------------------------------------------------------- SUCCESS
   if (receipt) {
-    const pending = bookedAppt && bookedAppt.status === 'pending';
+    const awaiting = ['pending', 'selected', 'assigned'].includes(bookedAppt?.status);
+    const awaitingText =
+      bookedAppt?.status === 'selected'
+        ? `Selected — with ${bookedAppt.assignedStaff?.fullName || 'your barber'}, awaiting their accept.`
+        : bookedAppt?.status === 'assigned'
+          ? 'Assigned — awaiting staff acceptance.'
+          : 'Pending — awaiting admin assignment, then a barber\u2019s accept.';
     return (
       <div className="mx-auto max-w-xl">
         <div className="mb-6 flex flex-col items-center text-center">
@@ -317,16 +323,16 @@ export default function BookWizard() {
           </div>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink">You&apos;re booked!</h1>
           <p className="mt-1 text-sm text-muted">
-            {pending
+            {awaiting
               ? 'Your slot is reserved and awaiting a barber to accept.'
               : 'Your appointment is confirmed. See you soon.'}
           </p>
         </div>
 
-        {pending && (
+        {awaiting && (
           <div className="mb-4 flex items-start gap-2 rounded-xl bg-warning/10 p-3 text-sm text-warning ring-1 ring-inset ring-warning/20">
             <Info className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>Pending — awaiting staff acceptance. You&apos;ll be notified once a barber takes it.</span>
+            <span>{awaitingText}</span>
           </div>
         )}
 

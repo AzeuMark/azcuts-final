@@ -10,13 +10,18 @@ Accounts (seeded): admin `admin@azcuts.com / admin` (change in prod) · staff
 1. Landing `/`: services gallery, barbers, hours, contact (all live data).
 2. Book Now → register → `/app/book`: pick service → pick barber (or Auto =
    admin assigns) → pick slot → Cash → Confirm → receipt + booking in
-   `/app/history` (Pending). Note: no extras step, no one-booking block —
-   service-only per paper.
+   `/app/history`. Auto lands **Pending** (just booked, admin assigns);
+   a picked barber lands **Selected** (awaiting their accept). Note: no
+   extras step, no one-booking block — service-only per paper.
 
 ## Act 2 — Owner assigns + manages (paper §3) — 4 min
 1. Admin `/admin/dashboard`: staff, bookings, **shop sales today**,
    **low-stock** widgets.
-2. `/admin/history` (filter Awaiting barber) → **Assign** → Joshua (Barber).
+2. `/admin/history` (filter Awaiting barber) → **Assign** (or Reassign) →
+   Joshua (Barber). Pending → **Assigned**; the Assign modal lists only
+   barbers free for that time and shows the last rejection reason if any.
+   Admin may cancel any booking except in-service/done/cancelled; customers
+   can only cancel Pending/Selected.
 3. `/admin/users`: add staff, deactivate (status Inactive), grant
    **Can update stock**; search/sort/pagination.
 4. `/admin/inventory`: Services CRUD → **Products** CRUD → **Stock** tab
@@ -25,9 +30,11 @@ Accounts (seeded): admin `admin@azcuts.com / admin` (change in prod) · staff
    Appointments / **Sales** / **Inventory** tabs + CSV + JSON export each.
 
 ## Act 3 — Barber (paper §2) — 3 min
-1. Staff `/staff/dashboard`: Incoming → **Accept** (= Confirm) → Start →
+1. Staff `/staff/dashboard`: Incoming (Selected + Assigned) → **Accept**
+   (= Confirm, now **Accepted** = ready to start) → Start (In-Service) →
    **Record sale** (service + Pomade ×2 → stock drops) → Finish (auto-creates
-   the service sale).
+   the service sale). Reject sends it back to the admin and **requires a
+   reason**, which the admin sees in the Assign modal.
 2. `/staff/sales`: own records. `/staff/inventory`: levels → **Update**
    (usage −1, needs the admin grant — show 403 before grant if asked).
 
