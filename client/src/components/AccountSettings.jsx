@@ -16,9 +16,10 @@ import { serverAsset } from '../utils/serverAsset';
 export default function AccountSettings({ showNickname = false }) {
   const { user, setUser } = useAuth();
   const { data: settings } = useSettingsPublic();
-  // S9: nicknames + profile photo are non-paper extras — hidden in school mode.
+  // S9: profile photo is a non-paper extra — hidden in school mode.
+  // Staff nicknames are always shown (pre-coded list, admin-editable).
   const { isEnabled } = useFeatures();
-  const showNicknameGate = showNickname && isEnabled('nicknames.enabled');
+  const showNicknameGate = showNickname;
   const avatarOn = isEnabled('userAccountManagement.avatarUpload');
   const nicknames = settings?.nicknames || [];
 

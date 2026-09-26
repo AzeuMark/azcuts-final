@@ -235,9 +235,7 @@ export default function UserManager() {
 
 function UserFormModal({ user, nicknames, isFirstAdmin = false, onClose, onSaved }) {
   const isEdit = Boolean(user);
-  // Nickname select hides in school mode (same gate as the parent table).
-  const { isEnabled } = useFeatures();
-  const nicknamesOn = isEnabled('nicknames.enabled');
+  // Staff nicknames come from the pre-coded Settings list (admin-editable).
   const {
     register,
     handleSubmit,
@@ -343,8 +341,12 @@ function UserFormModal({ user, nicknames, isFirstAdmin = false, onClose, onSaved
             Locked — the original admin cannot be demoted. Create another admin first if you need one.
           </p>
         )}
-        {role === 'staff' && nicknamesOn && (
-          <Select label="Nickname" {...register('nickname')}>
+        {role === 'staff' && (
+          <Select
+            label="Nickname"
+            error={errors.nickname?.message}
+            {...register('nickname', { required: 'Nickname is required for staff' })}
+          >
             <option value="">Select a title…</option>
             {nicknames.map((n) => (
               <option key={n} value={n}>

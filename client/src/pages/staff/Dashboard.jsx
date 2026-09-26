@@ -68,7 +68,7 @@ export default function Dashboard() {
       <PageHeader
         eyebrow="Today"
         title="Staff Dashboard"
-        description="Accept incoming appointments and move your queue through the day."
+        description="Accept your assigned appointments and move your queue through the day."
         actions={
           <Button variant="outline" onClick={() => setSaleOpen(true)}>
             <ReceiptText className="h-4 w-4" />
@@ -92,7 +92,7 @@ export default function Dashboard() {
               <Spinner className="text-brand" />
             </div>
           ) : incomingList.length === 0 ? (
-            <EmptyState icon={Inbox} title="No incoming appointments" description="New bookings routed to you will appear here." />
+            <EmptyState icon={Inbox} title="No incoming appointments" description="Bookings assigned to you will appear here." />
           ) : (
             <div className="stagger space-y-3">
               {incomingList.map((a) => (

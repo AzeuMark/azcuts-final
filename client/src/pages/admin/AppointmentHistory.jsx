@@ -294,10 +294,11 @@ function DiscountModal({ appointment, onClose, onSaved }) {
 }
 
 // Manual barber assignment (paper: owner "Assign available barber/stylist").
-// Lists on-shift staff; the server re-checks availability for the slot.
+// Lists only on-shift staff free for this booking's block; the server
+// re-checks availability for the slot (409 on a race).
 function AssignModal({ appointment, onClose, onSaved }) {
   const [staffId, setStaffId] = useState('');
-  const staffQ = useBookableStaff();
+  const staffQ = useBookableStaff(appointment?._id);
 
   const mutation = useMutation({
     mutationFn: () => appointmentApi.assign(appointment._id, staffId),
@@ -338,6 +339,12 @@ function AssignModal({ appointment, onClose, onSaved }) {
         ))}
       </Select>
       {staffQ.isLoading && <p className="mt-2 text-sm text-muted">Loading barbers…</p>}
+      {!staffQ.isLoading && staff.length === 0 && (
+        <p className="mt-2 text-sm text-warning">No barber is free for this time — pick another slot or wait for a cancellation.</p>
+      )}
+      {!staffQ.isLoading && staff.length > 0 && (
+        <p className="mt-2 text-xs text-muted">Only barbers free for this time are listed.</p>
+      )}
     </Modal>
   );
 }

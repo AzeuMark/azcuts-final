@@ -34,7 +34,7 @@ const STATUS_TABS = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-const CANCELLABLE = ['pending', 'accepted'];
+const CANCELLABLE = ['pending'];
 
 export default function History() {
   const queryClient = useQueryClient();

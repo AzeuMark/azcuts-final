@@ -8,6 +8,13 @@ const slotsRules = [
   query('staffId').optional({ values: 'falsy' }).isMongoId().withMessage('staffId must be a valid id'),
 ];
 
+const bookableStaffRules = [
+  query('appointmentId')
+    .optional({ values: 'falsy' })
+    .isMongoId()
+    .withMessage('appointmentId must be a valid id'),
+];
+
 const createBookingRules = [
   body('serviceId').isMongoId().withMessage('A valid serviceId is required'),
   body('extras').optional().isArray().withMessage('extras must be an array'),
@@ -38,4 +45,4 @@ const rateRules = [
   body('comment').optional().trim().isLength({ max: 500 }).withMessage('Comment too long'),
 ];
 
-module.exports = { slotsRules, createBookingRules, statusChangeRules, cancelRules, assignRules, rateRules };
+module.exports = { slotsRules, bookableStaffRules, createBookingRules, statusChangeRules, cancelRules, assignRules, rateRules };

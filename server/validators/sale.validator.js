@@ -22,6 +22,20 @@ const recordSaleRules = [
 const listSalesRules = [
   query('barber').optional({ values: 'falsy' }).isMongoId().withMessage('Invalid barber id'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be 1-100').toInt(),
+  query('page').optional().isInt({ min: 1 }).withMessage('page must be >= 1').toInt(),
+  query('search').optional({ values: 'falsy' }).trim(),
+  query('sort')
+    .optional({ values: 'falsy' })
+    .isIn(['newest', 'oldest', 'total_desc', 'total_asc'])
+    .withMessage('Invalid sort'),
+  query('range')
+    .optional({ values: 'falsy' })
+    .isIn(['all', 'daily', 'weekly', 'monthly', 'yearly'])
+    .withMessage('Invalid range'),
+  query('type')
+    .optional({ values: 'falsy' })
+    .isIn(['all', 'booking', 'counter'])
+    .withMessage('Invalid type'),
 ];
 
 module.exports = {

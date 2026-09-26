@@ -17,6 +17,7 @@ import PageHeader from '../../components/PageHeader';
 import ServiceCard from '../../components/ServiceCard';
 import ExtraChip from '../../components/ExtraChip';
 import SlotPicker from '../../components/SlotPicker';
+import StaffPicker from '../../components/StaffPicker';
 import ReceiptCard from '../../components/ReceiptCard';
 import Button, { buttonVariants } from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
@@ -171,10 +172,10 @@ export default function BookWizard() {
     serviceId: booking.service?._id,
     date: booking.date,
     extras: extrasOn ? booking.extras.map((e) => e._id) : [],
-    // School mode: customers never pick a barber — the owner assigns one.
-    // Slots stay bookable only while at least one barber is free.
-    staffId: null,
+    // Specific barber → availability for that barber; Auto → any free barber.
+    staffId: booking.staff && booking.staff !== 'auto' ? booking.staff : null,
   });
+  const staffQuery = useBookableStaff();
 
   // Default the schedule step to today the first time it's shown.
   useEffect(() => {
@@ -262,6 +263,7 @@ export default function BookWizard() {
           serviceId: booking.service._id,
           extras: extrasOn ? booking.extras.map((e) => e._id) : [],
           scheduledStart: booking.slot.start,
+          staffId: booking.staff && booking.staff !== 'auto' ? booking.staff : undefined,
           paymentMethod: 'cash',
         })
         .then((r) => r.data.appointment),
@@ -306,7 +308,7 @@ export default function BookWizard() {
 
   // ---------------------------------------------------------------- SUCCESS
   if (receipt) {
-    const pending = bookedAppt && !bookedAppt.assignedStaff;
+    const pending = bookedAppt && bookedAppt.status === 'pending';
     return (
       <div className="mx-auto max-w-xl">
         <div className="mb-6 flex flex-col items-center text-center">
@@ -580,14 +582,21 @@ export default function BookWizard() {
             </div>
           )}
 
-          {/* Step 2 — Schedule (no barber choice: the owner assigns one) */}
+          {/* Step 2 — Schedule (pick a barber or Auto, then a time) */}
           {booking.step === 2 && (
             <div>
-              <h2 className="mb-1 text-lg font-semibold text-ink">Pick a time</h2>
+              <h2 className="mb-1 text-lg font-semibold text-ink">Pick a barber &amp; time</h2>
               <p className="mb-4 text-sm text-muted">
-                Only times with a free barber can be booked. The owner assigns your barber after booking.
+                Choose your barber, or Auto to let the owner assign one. Only times with a free barber can be booked.
               </p>
-              <SlotPicker
+              <StaffPicker
+                staff={staffQuery.data || []}
+                value={booking.staff}
+                onChange={booking.setStaff}
+                loading={staffQuery.isLoading}
+              />
+              <div className="mt-5">
+                <SlotPicker
                 date={booking.date || today}
                 minDate={today}
                 onDateChange={booking.setDate}
@@ -596,6 +605,7 @@ export default function BookWizard() {
                 onSelectSlot={booking.setSlot}
                 mode="specific"
               />
+              </div>
             </div>
           )}
 
@@ -658,7 +668,11 @@ export default function BookWizard() {
                 )}
                 <Row
                   label="Barber"
-                  value="Assigned by the owner after booking"
+                  value={
+                    booking.staff && booking.staff !== 'auto'
+                      ? (staffQuery.data || []).find((s) => s._id === booking.staff)?.fullName || 'Selected barber'
+                      : 'Auto — owner assigns'
+                  }
                 />
                 <Row
                   label="When"

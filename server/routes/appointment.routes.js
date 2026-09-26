@@ -8,6 +8,7 @@ const validate = require('../middleware/validate');
 const ctrl = require('../controllers/appointment.controller');
 const {
   slotsRules,
+  bookableStaffRules,
   createBookingRules,
   statusChangeRules,
   cancelRules,
@@ -21,7 +22,7 @@ const router = express.Router();
 router.use(auth, systemMode);
 
 // Specific paths must be declared before the catch-all "/:id".
-router.get('/staff', requireRole('user', 'admin'), ctrl.bookableStaff);
+router.get('/staff', requireRole('user', 'admin'), bookableStaffRules, validate, ctrl.bookableStaff);
 router.get('/slots', requireRole('user', 'admin'), slotsRules, validate, ctrl.availableSlots);
 router.get('/mine', requireRole('user'), ctrl.listMine);
 router.post('/', requireRole('user'), createBookingRules, validate, ctrl.createBooking);

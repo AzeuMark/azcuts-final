@@ -12,9 +12,10 @@ const features = require('../config/features');
 
 // Legal appointment status transitions (SERVER_PLAN 2.1).
 // 'accepted -> pending' is the staff-reject-to-pool path handled specially below.
+// Once accepted, a booking can no longer be cancelled — only pending can.
 const ALLOWED = {
   pending: ['accepted', 'cancelled'],
-  accepted: ['in_service', 'cancelled', 'pending'],
+  accepted: ['in_service', 'pending'],
   in_service: ['done'],
   done: [],
   cancelled: [],
@@ -103,16 +104,14 @@ async function createBooking({
   // Must fall inside the shop's open hours for that day.
   scheduling.assertWithinStoreHours(start, end, settings, tz);
 
-  // Staff assignment — S5-school: ONLY the owner assigns (manual assign
-  // endpoint). Customers never pick a barber: an explicit staffId is rejected
-  // and unassigned bookings require at least one free on-shift barber.
+  // Staff assignment — customers may pick a specific barber (or Auto).
+  // A specific pick is validated (on-shift + free) and booked assigned-pending
+  // for that barber to accept. Auto (no staffId) stays unassigned for the
+  // owner to assign, but still requires at least one free on-shift barber.
   let assignedStaff = null;
   let autoAssigned = false;
 
   if (staffId) {
-    if (!features.isEnabled('appointmentManagement.autoAssignLeastLoaded')) {
-      throw ApiError.badRequest('Barber selection is disabled — the owner will assign your barber after booking');
-    }
     const staff = await User.findOne({ _id: staffId, role: 'staff' });
     if (!staff) throw ApiError.notFound('Staff not found');
     if (staff.status === 'inactive') throw ApiError.badRequest('That staff member is off shift');
@@ -346,7 +345,8 @@ async function assignAppointment(id, staffId, adminActor) {
   return populated;
 }
 
-// pending/accepted -> cancelled. Allowed for the owner, the assigned staff, or admin.
+// pending -> cancelled. Allowed for the owner, the assigned staff, or admin.
+// Once accepted, a booking can no longer be cancelled (409 via the map above).
 // S5: the reason is optional in school mode (defaults to 'Cancelled').
 async function cancelAppointment(id, actor, reason) {
   if (!reason || !String(reason).trim()) {

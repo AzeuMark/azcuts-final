@@ -113,7 +113,10 @@ const createUser = asyncHandler(async (req, res) => {
     throw ApiError.conflict('Username is already taken');
   }
 
-  if (role === 'staff' && nickname) {
+  if (role === 'staff') {
+    if (!nickname) {
+      throw ApiError.badRequest('Nickname is required for staff accounts');
+    }
     const settings = await Settings.findById('system');
     if (settings && !settings.nicknames.includes(nickname)) {
       throw ApiError.badRequest('Nickname must be one of the configured staff nicknames');
@@ -169,6 +172,19 @@ const updateUser = asyncHandler(async (req, res) => {
   if (req.body.role === 'staff' && req.body.nickname) {
     const settings = await Settings.findById('system');
     if (settings && !settings.nicknames.includes(req.body.nickname)) {
+      throw ApiError.badRequest('Nickname must be one of the configured staff nicknames');
+    }
+  }
+
+  // Staff accounts must always carry a nickname from the pre-coded list.
+  const targetRole = req.body.role || user.role;
+  const targetNickname = req.body.nickname !== undefined ? req.body.nickname : user.nickname;
+  if (targetRole === 'staff') {
+    if (!targetNickname) {
+      throw ApiError.badRequest('Nickname is required for staff accounts');
+    }
+    const settings = await Settings.findById('system');
+    if (settings && !settings.nicknames.includes(targetNickname)) {
       throw ApiError.badRequest('Nickname must be one of the configured staff nicknames');
     }
   }

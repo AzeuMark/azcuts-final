@@ -117,7 +117,7 @@
       "maintenancePage": false
     },
     "nicknames": {
-      "enabled": false
+      "enabled": true
     },
     "realtime": {
       "enabled": false,

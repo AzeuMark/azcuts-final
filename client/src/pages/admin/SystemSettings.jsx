@@ -61,10 +61,8 @@ export default function SystemSettings() {
   );
 }
 
-// S9: nicknames are a non-paper extra — hidden in school mode.
+// Staff nicknames are pre-coded titles (admin-editable) — always visible.
 function NicknameGate({ nicknames, onChanged }) {
-  const { isEnabled } = useFeatures();
-  if (!isEnabled('nicknames.enabled')) return null;
   return <NicknameManager nicknames={nicknames} onChanged={onChanged} />;
 }
 

@@ -30,12 +30,30 @@ function parseExtras(raw) {
 }
 
 // Active staff roster for the booking StaffPicker (customers choose a specific
-// barber or Auto). Read-only, no sensitive fields — only what the picker shows.
+// barber or Auto) and the admin Assign modal. Read-only, no sensitive fields.
+// ?appointmentId=<id> filters to staff free for that booking's block, so the
+// admin never sees a barber who already holds an overlapping appointment.
 const bookableStaff = asyncHandler(async (req, res) => {
   const staff = await User.find({ role: 'staff', status: { $in: ['active', 'in_service'] } })
     .select('fullName nickname avatar avgRating ratingCount status')
     .sort({ fullName: 1 });
-  return ok(res, { staff }, 'OK');
+
+  const appointmentId = req.query.appointmentId;
+  if (!appointmentId) return ok(res, { staff }, 'OK');
+
+  const appt = await Appointment.findById(appointmentId).select('scheduledStart scheduledEnd');
+  if (!appt) throw ApiError.notFound('Appointment not found');
+
+  const busy = await Appointment.find({
+    assignedStaff: { $in: staff.map((s) => s._id) },
+    status: { $in: ['pending', 'accepted', 'in_service'] },
+    scheduledStart: { $lt: appt.scheduledEnd },
+    scheduledEnd: { $gt: appt.scheduledStart },
+    _id: { $ne: appt._id },
+  }).select('assignedStaff');
+  const busyIds = new Set(busy.map((b) => String(b.assignedStaff)));
+  const free = staff.filter((s) => !busyIds.has(String(s._id)));
+  return ok(res, { staff: free }, 'OK');
 });
 
 const availableSlots = asyncHandler(async (req, res) => {

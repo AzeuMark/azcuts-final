@@ -58,7 +58,6 @@ const SCHOOL_DENYLIST = new Set([
   'ratings.staffAvg',
   'systemMode.enabled',
   'systemMode.maintenancePage',
-  'nicknames.enabled',
   'realtime.enabled',
   'realtime.socketIo',
   'realtime.notificationBell',

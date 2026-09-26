@@ -6,7 +6,8 @@ const User = require('../models/User');
 const appointmentService = require('../services/appointment.service');
 
 // GET /staff/appointments?scope=incoming|mine
-// incoming = pending bookings routed to me OR sitting in the pool (unassigned)
+// Staff only ever see their own assigned bookings (no pool, no other staff's).
+// incoming = pending bookings assigned to me (awaiting my accept)
 // mine     = my accepted / in-service queue
 const listAppointments = asyncHandler(async (req, res) => {
   const staffId = req.user.id;
@@ -15,7 +16,7 @@ const listAppointments = asyncHandler(async (req, res) => {
   const filter =
     scope === 'mine'
       ? { assignedStaff: staffId, status: { $in: ['accepted', 'in_service'] } }
-      : { status: 'pending', $or: [{ assignedStaff: staffId }, { assignedStaff: null }] };
+      : { assignedStaff: staffId, status: 'pending' };
 
   const appointments = await Appointment.find(filter)
     .sort({ scheduledStart: 1 })
