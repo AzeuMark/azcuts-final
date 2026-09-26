@@ -126,7 +126,7 @@ function ServicesPanel() {
     },
     { key: 'category', header: 'Category', render: (s) => <Badge tone={s.category === 'salon' ? 'accent' : 'brand'}>{s.category}</Badge> },
     { key: 'price', header: 'Price', align: 'right', render: (s) => formatMoney(s.price) },
-    { key: 'duration', header: 'Duration', align: 'right', render: (s) => `${s.durationMinutes} min` },
+    { key: 'duration', header: 'Duration', align: 'right', render: (s) => formatDuration(s.durationMinutes) },
     { key: 'active', header: 'Active', render: (s) => <Badge tone={s.isActive ? 'success' : 'neutral'}>{s.isActive ? 'Active' : 'Hidden'}</Badge> },
     {
       key: 'actions',
@@ -203,6 +203,15 @@ function ServicesPanel() {
   );
 }
 
+function formatDuration(totalMinutes) {
+  const total = Number(totalMinutes) || 0;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h <= 0) return `${m} min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 function ServiceFormModal({ service, onClose, onSaved }) {
   const isEdit = Boolean(service);
   const {
@@ -215,7 +224,8 @@ function ServiceFormModal({ service, onClose, onSaved }) {
       category: service?.category || 'haircut',
       description: service?.description || '',
       price: service?.price ?? '',
-      durationMinutes: service?.durationMinutes ?? 30,
+      durationHours: Math.floor(Number(service?.durationMinutes ?? 30) / 60),
+      durationMins: Number(service?.durationMinutes ?? 30) % 60,
       isActive: service?.isActive ?? true,
     },
   });
@@ -231,7 +241,7 @@ function ServiceFormModal({ service, onClose, onSaved }) {
         category: v.category,
         description: v.description || '',
         price: Number(v.price),
-        durationMinutes: Number(v.durationMinutes),
+        durationMinutes: Number(v.durationHours || 0) * 60 + Number(v.durationMins || 0),
         isActive: Boolean(v.isActive),
       };
       if (image.file) payload.image = image.file; // → multipart upload
@@ -278,14 +288,26 @@ function ServiceFormModal({ service, onClose, onSaved }) {
             {...register('price', { required: 'Price is required', min: { value: 0, message: 'Must be ≥ 0' } })}
           />
         </div>
-        <Input
-          label="Duration (minutes)"
-          type="number"
-          min={0}
-          step="5"
-          error={errors.durationMinutes?.message}
-          {...register('durationMinutes', { required: 'Duration is required', min: { value: 0, message: 'Must be ≥ 0' } })}
-        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input
+            label="Duration hours"
+            type="number"
+            min={0}
+            max={8}
+            step="1"
+            error={errors.durationHours?.message}
+            {...register('durationHours', { min: { value: 0, message: 'Must be ≥ 0' }, max: { value: 8, message: 'At most 8' } })}
+          />
+          <Input
+            label="Duration minutes"
+            type="number"
+            min={0}
+            max={59}
+            step="5"
+            error={errors.durationMins?.message}
+            {...register('durationMins', { min: { value: 0, message: 'Must be ≥ 0' }, max: { value: 59, message: 'At most 59' } })}
+          />
+        </div>
         <Textarea label="Description" rows={3} {...register('description')} />
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink">Image</label>
